@@ -54,7 +54,9 @@ C.motion.h36m_target_length_eval = 25
 C.motion.dim = 66
 
 C.data_aug = True
+# Apply DCT to input data
 C.deriv_input = True
+# Apply an offset correction to output
 C.deriv_output = True
 C.use_relative_loss = True
 
@@ -62,6 +64,7 @@ C.use_relative_loss = True
 ## Network
 C.pre_dct = False
 C.post_dct = False
+
 ## Motion Network mlp
 dim_ = 66
 C.motion_mlp = edict()
@@ -71,6 +74,7 @@ C.motion_mlp.num_layers = 48
 C.motion_mlp.with_normalization = True
 C.motion_mlp.spatial_fc_only = False
 C.motion_mlp.norm_axis = 'spatial'
+
 ## Motion Network FC In
 C.motion_fc_in = edict()
 C.motion_fc_in.in_features = C.motion.dim
@@ -79,6 +83,7 @@ C.motion_fc_in.with_norm = False
 C.motion_fc_in.activation = 'relu'
 C.motion_fc_in.init_w_trunc_normal = False
 C.motion_fc_in.temporal_fc = False
+
 ## Motion Network FC Out
 C.motion_fc_out = edict()
 C.motion_fc_out.in_features = dim_
@@ -104,7 +109,7 @@ C.shift_step = 1
 
 """Display Config"""
 C.print_every = 100
-C.save_every = 5000
+C.save_every = 500
 
 
 if __name__ == '__main__':
