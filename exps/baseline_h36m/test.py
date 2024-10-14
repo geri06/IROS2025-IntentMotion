@@ -14,6 +14,9 @@ from torch.utils.data import DataLoader
 results_keys = ['#2', '#4', '#8', '#10', '#14', '#18', '#22', '#25']
 
 def get_dct_matrix(N):
+    """
+    Compute DCT and IDCT matrix with dim NxN to transform data
+    """
     dct_m = np.eye(N)
     for k in np.arange(N):
         for i in np.arange(N):
@@ -24,43 +27,59 @@ def get_dct_matrix(N):
     idct_m = np.linalg.inv(dct_m)
     return dct_m, idct_m
 
+# create DCT with dimensions of input lenght data (50)
 dct_m,idct_m = get_dct_matrix(config.motion.h36m_input_length_dct)
+# create tensor, load GPU and add 3rd dim (1,N,N) to dct matrices
 dct_m = torch.tensor(dct_m).float().cuda().unsqueeze(0)
 idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
 
+# pbar is = dataloader
 def regress_pred(model, pbar, num_samples, joint_used_xyz, m_p3d_h36):
+    # ignored or mapped to other joints
     joint_to_ignore = np.array([16, 20, 23, 24, 28, 31]).astype(np.int64)
     joint_equal = np.array([13, 19, 22, 13, 27, 30]).astype(np.int64)
 
     for (motion_input, motion_target) in pbar:
         motion_input = motion_input.cuda()
         b,n,c,_ = motion_input.shape
+        # num samples updated adding batch size
         num_samples += b
 
         motion_input = motion_input.reshape(b, n, 32, 3)
+        # keep only the joints used and reshape to (b,n,22*3)
         motion_input = motion_input[:, :, joint_used_xyz].reshape(b, n, -1)
         outputs = []
+        # how many frames are predicted in one forward pass
         step = config.motion.h36m_target_length_train
+        # if 25 or more is 1
         if step == 25:
             num_step = 1
         else:
             num_step = 25 // step + 1
         for idx in range(num_step):
+            # without gradients, useful for inference
             with torch.no_grad():
+                # if we want dct encoding
                 if config.deriv_input:
                     motion_input_ = motion_input.clone()
                     motion_input_ = torch.matmul(dct_m[:, :, :config.motion.h36m_input_length], motion_input_.cuda())
                 else:
                     motion_input_ = motion_input.clone()
                 output = model(motion_input_)
+                # transform output using idct_m for the rows of, h36m_input_length. Then we slice to extract the first step frames of the result.
                 output = torch.matmul(idct_m[:, :config.motion.h36m_input_length, :], output)[:, :step, :]
+                # if deriv output
                 if config.deriv_output:
+                    # we add the input last frame tensor in the step frames predicted from the output (cause to displacement prediction)
                     output = output + motion_input[:, -1:, :].repeat(1,step,1)
 
+            # reshape output to be (b,step,66), for some reason is done in 2 lines
             output = output.reshape(-1, 22*3)
             output = output.reshape(b,step,-1)
             outputs.append(output)
+            # delete the first step frames in input and add the output step frames and the end.
             motion_input = torch.cat([motion_input[:, step:], output], axis=1)
+        # concatenate outputs and keep the first 25
         motion_pred = torch.cat(outputs, axis=1)[:,:25]
 
         motion_target = motion_target.detach()
