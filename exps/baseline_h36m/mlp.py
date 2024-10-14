@@ -15,6 +15,7 @@ class LN(nn.Module):
         var = ((x - mean) ** 2).mean(dim=1, keepdim=True)
         std = (var + self.epsilon).sqrt()
         y = (x - mean) / std
+        # element wise product with self.alpha and self.beta broadcasted to (1,50,66)
         y = y * self.alpha + self.beta
         return y
 
@@ -31,6 +32,7 @@ class LN_v2(nn.Module):
         var = ((x - mean) ** 2).mean(dim=-1, keepdim=True)
         std = (var + self.epsilon).sqrt()
         y = (x - mean) / std
+        # element wise product with self.alpha and self.beta broadcasted
         y = y * self.alpha + self.beta
         return y
 

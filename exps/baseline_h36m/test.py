@@ -35,6 +35,9 @@ idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
 
 # pbar is == dataloader
 def regress_pred(model, pbar, num_samples, joint_used_xyz, m_p3d_h36):
+    """
+    Do the prediction of the data and compute mean loss per joint for each time frame
+    """
     # ignored or mapped to other joints
     joint_to_ignore = np.array([16, 20, 23, 24, 28, 31]).astype(np.int64)
     joint_equal = np.array([13, 19, 22, 13, 27, 30]).astype(np.int64)
