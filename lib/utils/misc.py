@@ -309,6 +309,9 @@ def find_indices_256(frame_num1, frame_num2, seq_len, input_n=10):
     which originaly from
     In order to find the same action indices as in SRNN.
     https://github.com/asheshjain399/RNNexp/blob/master/structural_rnn/CRFProblems/H3.6m/processdata.py#L325
+
+    The function generates multiple sets of frame indices to create subsequences of a specific length (seq_len) for training or evaluation.
+
     """
 
     # Used a fixed dummy seed, following

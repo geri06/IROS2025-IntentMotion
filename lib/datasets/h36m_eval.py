@@ -57,6 +57,7 @@ class H36MEval(data.Dataset):
                 num_frames0 = poses0.shape[0]
                 num_frames1 = poses1.shape[0]
 
+                # The function generates multiple sets of frame indices to create subsequences of a specific length (seq_len) for training or evaluation.
                 fs_sel1, fs_sel2 = find_indices_256(num_frames0, num_frames1,
                                    self.h36m_motion_input_length + self.h36m_motion_target_length,
                                    input_n=self.h36m_motion_input_length)
