@@ -127,7 +127,7 @@ def test(config, model, dataloader) :
     ret = {}
     for j in range(config.motion.h36m_target_length):
         ret["#{:d}".format(titles[j])] = [m_p3d_h36[j], m_p3d_h36[j]]
-    return [round(ret[key][0], 1) for key in results_keys]
+    return [round(ret[key][0], 1) for key in results_keys],
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
