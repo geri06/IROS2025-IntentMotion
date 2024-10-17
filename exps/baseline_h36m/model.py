@@ -48,19 +48,28 @@ class siMLPe(nn.Module):
             motion_feats = self.motion_fc_in(motion_feats)
         else:
             # pass motion input directly and after that transpose to start working in temporal dimension with motion mlp
+
+            print("INPUT:",motion_input.shape)
             motion_feats = self.motion_fc_in(motion_input)
+            print(motion_feats.shape)
             motion_feats = self.arr0(motion_feats)
+            print(motion_feats.shape)
 
         # compute motion_feats with motion mlp (42 layers of MLP + LN)
         motion_feats = self.motion_mlp(motion_feats)
+        print(motion_feats.shape)
 
         # process motion feats wit Linear before inverse dct
         if self.temporal_fc_out:
             motion_feats = self.motion_fc_out(motion_feats)
             motion_feats = self.arr1(motion_feats)
         else:
+            print(motion_feats.shape)
             motion_feats = self.arr1(motion_feats)
+            print(motion_feats.shape)
             motion_feats = self.motion_fc_out(motion_feats)
+            print("OUTPUT:",motion_feats.shape)
+
 
         return motion_feats
 
