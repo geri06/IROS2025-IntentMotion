@@ -91,7 +91,7 @@ C.motion_gcn_in.out_features = dim_
 C.motion_gcn_in.n_node = C.motion.h36m_input_length_dct
 C.motion_gcn_in.do = 0
 C.motion_gcn_in.num_stage = 0
-C.motion_gcn_in.gcn_in = True
+C.motion_gcn_in.gcn_in = False
 
 ## Motion Network FC Out
 C.motion_fc_out = edict()
@@ -109,7 +109,7 @@ C.motion_gcn_out.out_features = dim_
 C.motion_gcn_out.n_node = C.motion.h36m_input_length_dct
 C.motion_gcn_out.do = 0
 C.motion_gcn_out.num_stage = 0
-C.motion_gcn_out.gcn_out = True
+C.motion_gcn_out.gcn_out = False
 
 """Train Config"""
 C.batch_size = 256
