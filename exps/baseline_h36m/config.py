@@ -84,6 +84,15 @@ C.motion_fc_in.activation = 'relu'
 C.motion_fc_in.init_w_trunc_normal = False
 C.motion_fc_in.temporal_fc = False
 
+## Motion Network GCN In
+C.motion_gcn_in = edict()
+C.motion_gcn_in.in_features = C.motion.dim
+C.motion_gcn_in.out_features = dim_
+C.motion_gcn_in.n_node = C.motion.h36m_input_length_dct
+C.motion_gcn_in.do = 0
+C.motion_gcn_in.num_stage = 0
+C.motion_gcn_in.gcn_in = True
+
 ## Motion Network FC Out
 C.motion_fc_out = edict()
 C.motion_fc_out.in_features = dim_
@@ -92,6 +101,15 @@ C.motion_fc_out.with_norm = False
 C.motion_fc_out.activation = 'relu'
 C.motion_fc_out.init_w_trunc_normal = True
 C.motion_fc_out.temporal_fc = False
+
+## Motion Network GCN OUT
+C.motion_gcn_out = edict()
+C.motion_gcn_out.in_features = C.motion.dim
+C.motion_gcn_out.out_features = dim_
+C.motion_gcn_out.n_node = C.motion.h36m_input_length_dct
+C.motion_gcn_out.do = 0
+C.motion_gcn_out.num_stage = 0
+C.motion_gcn_out.gcn_out = True
 
 """Train Config"""
 C.batch_size = 256
@@ -106,10 +124,11 @@ C.model_pth = None
 
 """Eval Config"""
 C.shift_step = 1
+C.eval_every = 100
 
 """Display Config"""
 C.print_every = 100
-C.save_every = 500
+C.save_every = 1000
 
 
 if __name__ == '__main__':
