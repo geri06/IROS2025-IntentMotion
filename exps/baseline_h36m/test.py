@@ -104,7 +104,6 @@ def regress_pred(model, pbar, num_samples, joint_used_xyz, m_p3d_h36):
         motion_pred = tmp
         # we set values of joints to ignore with values of joints_equal
         motion_pred[:, :, joint_to_ignore] = motion_pred[:, :, joint_equal]
-
         # compute L2 distance between joints pred and goal, compute mean of joints diff in each time frame, sum the values of each time frame in each batch.
         mpjpe_p3d_h36 = torch.sum(torch.mean(torch.norm(motion_pred*1000 - motion_gt*1000, dim=3), dim=2), dim=0)
         # accumulate loss for each batch of data
@@ -127,7 +126,7 @@ def test(config, model, dataloader) :
     ret = {}
     for j in range(config.motion.h36m_target_length):
         ret["#{:d}".format(titles[j])] = [m_p3d_h36[j], m_p3d_h36[j]]
-    return [round(ret[key][0], 1) for key in results_keys]
+    return [round(ret[key][0], 1) for key in results_keys],
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)

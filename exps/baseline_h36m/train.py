@@ -131,7 +131,6 @@ def train_step(h36m_motion_input, h36m_motion_target, model, optimizer, nb_iter,
     h36m_motion_target = h36m_motion_target.cuda().reshape(b,n,22,3).reshape(-1,3)
     # Compute L2 eucl. dist. between points and after that the mean.
     loss = torch.mean(torch.norm(motion_pred - h36m_motion_target, 2, 1))
-
     # If we want to use Lv (loss with velocities)
     if config.use_relative_loss:
         motion_pred = motion_pred.reshape(b,n,22,3)
@@ -233,9 +232,9 @@ while (nb_iter + 1) < config.cos_lr_total_iters:
         avg_loss += loss
         avg_lr += current_lr
 
+#10 like training in mm
         # every config.print_every we print and log avg_loss and avg_lr
         if (nb_iter + 1) % config.print_every ==  0 :
-            print(nb_iter + 1)
             avg_loss = avg_loss / config.print_every
             avg_lr = avg_lr / config.print_every
             print_and_log_info(logger, "Iter {} Summary: ".format(nb_iter + 1))
@@ -243,13 +242,24 @@ while (nb_iter + 1) < config.cos_lr_total_iters:
             avg_loss = 0
             avg_lr = 0
 
+        if (nb_iter + 1) % config.eval_every == 0 :
+            model.eval()
+            # calc loss in all timeframes
+            acc_tmp = test(eval_config, model, eval_dataloader)
+            print(acc_tmp)
+            avg_test_loss = np.mean(np.array(acc_tmp[0]))/1000  # mean of all time frames
+            writer.add_scalar('Test Loss/angle', avg_test_loss, nb_iter)
+            print_and_log_info(logger, f"\t Test loss: {avg_test_loss}")
+            model.train()
+
         # every config.save_every we save the model
         if (nb_iter + 1) % config.save_every ==  0 :
             torch.save(model.state_dict(), config.snapshot_dir + '/model-iter-' + str(nb_iter + 1) + '.pth')
             # eval model
             model.eval()
-            # calc accuracy
+            # calc loss
             acc_tmp = test(eval_config, model, eval_dataloader)
+
             print(acc_tmp)
             acc_log.write(''.join(str(nb_iter + 1) + '\n'))
             line = ''
