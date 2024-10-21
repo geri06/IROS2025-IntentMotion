@@ -3,7 +3,7 @@ import glob
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from utils.misc import expmap2rotmat_torch, find_indices_256, find_indices_srnn, rotmat2xyz_torch
+from lib.utils.misc import expmap2rotmat_torch, find_indices_256, find_indices_srnn, rotmat2xyz_torch
 
 import torch
 import torch.utils.data as data

@@ -120,13 +120,13 @@ def test(config, model, dataloader) :
     num_samples = 0
 
     pbar = dataloader
-    m_p3d_h36 = regress_pred(model, pbar, num_samples, joint_used_xyz, m_p3d_h36)
+    m_p3d_h36  = regress_pred(model, pbar, num_samples, joint_used_xyz, m_p3d_h36)
 
     # This returns a dictionary with the correspondant loss to each time frame in results time frames
     ret = {}
     for j in range(config.motion.h36m_target_length):
         ret["#{:d}".format(titles[j])] = [m_p3d_h36[j], m_p3d_h36[j]]
-    return [round(ret[key][0], 1) for key in results_keys],
+    return [round(ret[key][0], 1) for key in results_keys]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)

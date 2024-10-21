@@ -89,8 +89,8 @@ C.motion_gcn_in = edict()
 C.motion_gcn_in.in_features = C.motion.dim
 C.motion_gcn_in.out_features = dim_
 C.motion_gcn_in.n_node = C.motion.h36m_input_length_dct
-C.motion_gcn_in.do = 0
-C.motion_gcn_in.num_stage = 0
+C.motion_gcn_in.do = 0.3
+C.motion_gcn_in.num_stage = 12
 C.motion_gcn_in.gcn_in = False
 
 ## Motion Network FC Out
@@ -107,8 +107,8 @@ C.motion_gcn_out = edict()
 C.motion_gcn_out.in_features = C.motion.dim
 C.motion_gcn_out.out_features = dim_
 C.motion_gcn_out.n_node = C.motion.h36m_input_length_dct
-C.motion_gcn_out.do = 0
-C.motion_gcn_out.num_stage = 0
+C.motion_gcn_out.do = 0.3
+C.motion_gcn_out.num_stage = 12
 C.motion_gcn_out.gcn_out = False
 
 """Train Config"""
@@ -128,7 +128,7 @@ C.eval_every = 100
 
 """Display Config"""
 C.print_every = 100
-C.save_every = 1000
+C.save_every = 5000
 
 
 if __name__ == '__main__':
