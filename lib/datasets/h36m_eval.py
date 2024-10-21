@@ -3,20 +3,24 @@ import glob
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from utils.misc import expmap2rotmat_torch, find_indices_256, find_indices_srnn, rotmat2xyz_torch
+from lib.utils.misc import expmap2rotmat_torch, find_indices_256, find_indices_srnn, rotmat2xyz_torch
 
 import torch
 import torch.utils.data as data
 
 class H36MEval(data.Dataset):
-    def __init__(self, config, split_name, paired=True):
+    def __init__(self, config, split_name, actions = 'all', paired=True):
         super(H36MEval, self).__init__()
         self._split_name = split_name
         self._h36m_anno_dir = config.h36m_anno_dir
-        self._actions = ["walking", "eating", "smoking", "discussion", "directions",
-                        "greeting", "phoning", "posing", "purchases", "sitting",
-                        "sittingdown", "takingphoto", "waiting", "walkingdog",
-                        "walkingtogether"]
+
+        if actions == 'all':
+            self._actions = ["walking", "eating", "smoking", "discussion", "directions",
+                            "greeting", "phoning", "posing", "purchases", "sitting",
+                            "sittingdown", "takingphoto", "waiting", "walkingdog",
+                            "walkingtogether"]
+        else:
+            self._actions = actions
 
         self.h36m_motion_input_length =  config.motion.h36m_input_length
         self.h36m_motion_target_length =  config.motion.h36m_target_length
