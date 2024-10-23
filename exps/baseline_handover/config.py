@@ -51,7 +51,7 @@ C.motion.handover_input_length = 50
 C.motion.handover_input_length_dct = 50
 C.motion.handover_target_length_train = 10
 C.motion.handover_target_length_eval = 25
-C.motion.dim = 66
+C.motion.dim = 27
 
 C.data_aug = True
 # Apply DCT to input data
@@ -66,7 +66,7 @@ C.pre_dct = False
 C.post_dct = False
 
 ## Motion Network mlp
-dim_ = 66
+dim_ = 27
 C.motion_mlp = edict()
 C.motion_mlp.hidden_dim = dim_
 C.motion_mlp.seq_len = C.motion.handover_input_length_dct
@@ -84,6 +84,15 @@ C.motion_fc_in.activation = 'relu'
 C.motion_fc_in.init_w_trunc_normal = False
 C.motion_fc_in.temporal_fc = False
 
+## Motion Network GCN In
+C.motion_gcn_in = edict()
+C.motion_gcn_in.in_features = C.motion.dim
+C.motion_gcn_in.out_features = dim_
+C.motion_gcn_in.n_node = C.motion.handover_input_length_dct
+C.motion_gcn_in.do = 0.3
+C.motion_gcn_in.num_stage = 12
+C.motion_gcn_in.gcn_in = False
+
 ## Motion Network FC Out
 C.motion_fc_out = edict()
 C.motion_fc_out.in_features = dim_
@@ -93,9 +102,18 @@ C.motion_fc_out.activation = 'relu'
 C.motion_fc_out.init_w_trunc_normal = True
 C.motion_fc_out.temporal_fc = False
 
+## Motion Network GCN OUT
+C.motion_gcn_out = edict()
+C.motion_gcn_out.in_features = C.motion.dim
+C.motion_gcn_out.out_features = dim_
+C.motion_gcn_out.n_node = C.motion.handover_input_length_dct
+C.motion_gcn_out.do = 0.3
+C.motion_gcn_out.num_stage = 12
+C.motion_gcn_out.gcn_out = False
+
 """Train Config"""
 C.batch_size = 256
-C.num_workers = 8
+C.num_workers = 6
 
 C.cos_lr_max=1e-5
 C.cos_lr_min=5e-8
@@ -106,11 +124,12 @@ C.model_pth = None
 
 """Eval Config"""
 C.shift_step = 1
+C.eval_every = 100
+C.actions_to_load = "all" # add actions between brackets: ["walking", "smoking"]
 
 """Display Config"""
 C.print_every = 100
-C.save_every = 500
-
+C.save_every = 5000
 
 if __name__ == '__main__':
     print(config.decoder.motion_mlp)
