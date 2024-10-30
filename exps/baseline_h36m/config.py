@@ -113,7 +113,7 @@ C.motion_gcn_out.gcn_out = False
 
 """Train Config"""
 C.batch_size = 256
-C.num_workers = 8
+C.num_workers = 6
 
 C.cos_lr_max=1e-5
 C.cos_lr_min=5e-8
@@ -129,7 +129,7 @@ C.actions_to_load = "all" # add actions between brackets: ["walking", "smoking"]
 
 """Display Config"""
 C.print_every = 100
-C.save_every = 100
+C.save_every = 5000
 
 if __name__ == '__main__':
     print(config.decoder.motion_mlp)

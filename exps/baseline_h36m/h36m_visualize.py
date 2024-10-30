@@ -13,38 +13,7 @@ from lib.datasets.h36m_eval import H36MEval
 from config  import config
 from model import siMLPe as Model
 
-
-# from utils.data_utils import define_actions
-
-
-
-def define_actions(action):
-    """
-    Define the list of actions we are using.
-
-    Args
-      action: String with the passed action. Could be "all"
-    Returns
-      actions: List of strings of actions
-    Raises
-      ValueError if the action is not included in H3.6M
-    """
-
-    actions = ["walking", "eating", "smoking", "discussion", "directions",
-               "greeting", "phoning", "posing", "purchases", "sitting",
-               "sittingdown", "takingphoto", "waiting", "walkingdog",
-               "walkingtogether"]
-    if action in actions:
-        return [action]
-
-    if action == "all":
-        return actions
-
-    if action == "all_srnn":
-        return ["walking", "eating", "smoking", "discussion"]
-
-    raise (ValueError, "Unrecognized action: %d" % action)
-
+"""Code adapted from STSGCN Repo: https://github.com/FraLuca/STSGCN/blob/main/utils/h36_3d_viz.py"""
 
 def create_pose(ax, plots, vals, pred=True, update=False):
     # h36m 32 joints(full)
@@ -126,7 +95,7 @@ idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
 def data_to_viz(model, pbar, num_samples, joint_used_xyz, n_viz):
     import random
     """
-    regress_pred modified to return pred_data and gt_data
+    regress_pred() from test.py modified to return pred_data and gt_data
     """
     # ignored or mapped to other joints
     joint_to_ignore = np.array([16, 20, 23, 24, 28, 31]).astype(np.int64)
@@ -228,7 +197,7 @@ def data_to_viz(model, pbar, num_samples, joint_used_xyz, n_viz):
 
         ax.set_zlim3d([0.0, 1.5])
         ax.set_zlabel('Z')
-        ax.set_title('loss in mm is: ' + str(round(mpjpe_p3d_h36[-1].item(), 4)) + ' for action : ' + 'not specified '+ ' for ' + str(
+        ax.set_title('mean loss in mm is: ' + str(round(mpjpe_p3d_h36[-1].item()/b, 4)) + ' for action : ' + str(config.actions_to_load) + ' for ' + str(
             25) + ' frames')
 
         line_anim = animation.FuncAnimation(fig, update, 25, fargs=(data_gt, data_pred, gt_plots, pred_plots,
