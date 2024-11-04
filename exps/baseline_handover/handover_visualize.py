@@ -151,10 +151,11 @@ def data_to_viz(model, pbar, num_samples, n_viz):
         motion_pred = motion_pred.detach().cpu()
 
         # compute L2 distance between joints pred and goal, compute mean of joints diff in each time frame, sum the values of each time frame in each batch.
-        mpjpe_p3d_h36 = torch.sum(torch.mean(torch.norm(motion_pred * 1000 - motion_gt * 1000, dim=3), dim=2), dim=0)
+        mpjpe_p3d_h36 = torch.sum(torch.mean(torch.norm(motion_pred - motion_gt, dim=3), dim=2), dim=0)
+        mpjpe_p3d_h36 = mpjpe_p3d_h36/b
 
-        data_pred = torch.squeeze(motion_pred, 0).cpu().data.numpy() *1000 # in meters
-        data_gt = torch.squeeze(motion_target, 0).cpu().data.numpy() *1000
+        data_pred = torch.squeeze(motion_pred, 0).cpu().data.numpy() # in meters
+        data_gt = torch.squeeze(motion_target, 0).cpu().data.numpy()
 
         i = random.randint(1, 128)
 
@@ -186,7 +187,7 @@ def data_to_viz(model, pbar, num_samples, n_viz):
         ax.set_zlim3d([-1, 1.5])
         ax.set_zlabel('Z')
 
-        ax.set_title('mean loss in mm is: ' + str(round(mpjpe_p3d_h36[-1].item()/b, 4)) + ' for action : ' + str(config.actions_to_load) + ' for ' + str(
+        ax.set_title('mean loss in mm is: ' + str(round(mpjpe_p3d_h36[-1].item(), 4)) + ' for action : ' + str(config.actions_to_load) + ' for ' + str(
             25) + ' frames')
 
         line_anim = animation.FuncAnimation(fig, update, 25, fargs=(data_gt, data_pred, gt_plots, pred_plots,
