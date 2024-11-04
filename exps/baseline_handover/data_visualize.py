@@ -76,6 +76,13 @@ def create_pose(ax, plots, vals, pred=True, update=False):
 
 # In[11]:
 
+def set_root(data_gt):
+    """
+    Function to set fixed root when visualizing. Root set to first frame of sequence.
+    """
+    gt_vals = data_gt[0]
+    xroot, yroot, zroot = gt_vals[0, 0], gt_vals[0, 1], gt_vals[0, 2]
+    return xroot, yroot, zroot
 
 def update(num, data_gt, data_pred, plots_gt, plots_pred, fig, ax):
     gt_vals = data_gt[num]
@@ -84,8 +91,8 @@ def update(num, data_gt, data_pred, plots_gt, plots_pred, fig, ax):
     plots_pred = create_pose(ax, plots_pred, pred_vals, pred=True, update=True)
 
     r = 1
-    xroot, yroot, zroot = gt_vals[0, 0], gt_vals[0, 1], gt_vals[0, 2]
-    ax.set_xlim3d([-r + xroot, r + xroot])
+    xroot, yroot, zroot = set_root(data_gt)
+    ax.set_xlim3d([-r - 5 + xroot, r + xroot])
     ax.set_ylim3d([-r + yroot, r + yroot])
     ax.set_zlim3d([-r + zroot, r + zroot])
 

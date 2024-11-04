@@ -181,10 +181,10 @@ def data_to_viz(model, pbar, num_samples, n_viz):
         ax.set_xlim3d([-1, 1.5])
         ax.set_xlabel('X')
 
-        ax.set_ylim3d([0.0, 2.25])
+        ax.set_ylim3d([-1, 1.5])
         ax.set_ylabel('Y')
 
-        ax.set_zlim3d([-1, 1.5])
+        ax.set_zlim3d([0.0, 1.5])
         ax.set_zlabel('Z')
 
         ax.set_title('mean loss in mm is: ' + str(round(mpjpe_p3d_h36[-1].item(), 4)) + ' for action : ' + str(config.actions_to_load) + ' for ' + str(
@@ -195,7 +195,7 @@ def data_to_viz(model, pbar, num_samples, n_viz):
         plt.show()
 
         line_anim.save('./visualizations/pred{}/human_viz{}.gif'.format(25, i), writer='pillow')
-
+        print('./visualizations/pred{}/human_viz{}.gif'.format(25, i))
         if cnt == n_viz - 1:
             break
 
@@ -204,6 +204,13 @@ def data_to_viz(model, pbar, num_samples, n_viz):
 
 # In[11]:
 
+def set_root(data_gt):
+    """
+    Function to set fixed root when visualizing. Root set to first frame of sequence.
+    """
+    gt_vals = data_gt[0]
+    xroot, yroot, zroot = gt_vals[0, 0], gt_vals[0, 1], gt_vals[0, 2]
+    return xroot, yroot, zroot
 
 def update(num, data_gt, data_pred, plots_gt, plots_pred, fig, ax):
     gt_vals = data_gt[num]
@@ -212,7 +219,7 @@ def update(num, data_gt, data_pred, plots_gt, plots_pred, fig, ax):
     plots_pred = create_pose(ax, plots_pred, pred_vals, pred=True, update=True)
 
     r = 1
-    xroot, yroot, zroot = gt_vals[0, 0], gt_vals[0, 1], gt_vals[0, 2]
+    xroot, yroot, zroot = set_root(data_gt)
     ax.set_xlim3d([-r + xroot, r + xroot])
     ax.set_ylim3d([-r + yroot, r + yroot])
     ax.set_zlim3d([-r + zroot, r + zroot])
