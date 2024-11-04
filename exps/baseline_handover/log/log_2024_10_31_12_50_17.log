@@ -1,0 +1,147 @@
+[2024-10-31 12:50:19,493] INFO: {
+    "abs_dir": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover",
+    "actions_to_load": "all",
+    "batch_size": 128,
+    "cos_lr_max": 1e-05,
+    "cos_lr_min": 5e-08,
+    "cos_lr_total_iters": 1000,
+    "data_aug": true,
+    "deriv_input": true,
+    "deriv_output": true,
+    "eval_every": 500,
+    "handover_anno_dir": "/home/gerard/Documents/IRI/Repos/siMLPe/data/handover/",
+    "link_log_file": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/log_last.log",
+    "link_val_log_file": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/val_last.log",
+    "log_dir": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log",
+    "log_file": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/log_2024_10_31_12_50_17.log",
+    "model_pth": null,
+    "motion": {
+        "dim": 27,
+        "handover_input_length": 50,
+        "handover_input_length_dct": 50,
+        "handover_target_length_eval": 25,
+        "handover_target_length_train": 10
+    },
+    "motion_fc_in": {
+        "activation": "relu",
+        "in_features": 27,
+        "init_w_trunc_normal": false,
+        "out_features": 27,
+        "temporal_fc": false,
+        "with_norm": false
+    },
+    "motion_fc_out": {
+        "activation": "relu",
+        "in_features": 27,
+        "init_w_trunc_normal": true,
+        "out_features": 27,
+        "temporal_fc": false,
+        "with_norm": false
+    },
+    "motion_gcn_in": {
+        "do": 0.3,
+        "gcn_in": false,
+        "in_features": 27,
+        "n_node": 50,
+        "num_stage": 12,
+        "out_features": 27
+    },
+    "motion_gcn_out": {
+        "do": 0.3,
+        "gcn_out": false,
+        "in_features": 27,
+        "n_node": 50,
+        "num_stage": 12,
+        "out_features": 27
+    },
+    "motion_mlp": {
+        "hidden_dim": 27,
+        "norm_axis": "spatial",
+        "num_layers": 48,
+        "seq_len": 50,
+        "spatial_fc_only": false,
+        "with_normalization": true
+    },
+    "num_workers": 6,
+    "post_dct": false,
+    "pre_dct": false,
+    "print_every": 500,
+    "repo_name": "siMLPe",
+    "root_dir": "/home/gerard/Documents/IRI/Repos/siMLPe",
+    "save_every": 5000,
+    "seed": 304,
+    "shift_step": 1,
+    "snapshot_dir": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/snapshot",
+    "this_dir": "baseline_handover",
+    "use_relative_loss": true,
+    "val_log_file": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/val_2024_10_31_12_50_17.log",
+    "weight_decay": 0.0001
+}
+[2024-10-31 12:50:20,148] INFO: Testing with subject ['S8'] 
+[2024-10-31 12:50:20,148] INFO: Training with subjects ['S9', 'S10', 'S4', 'S5', 'S3', 'S6', 'S7'] 
+[2024-10-31 12:50:43,575] INFO: Iter 500 Summary: 
+[2024-10-31 12:50:43,576] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.326907239228487
+[2024-10-31 12:50:43,859] INFO: 	 Test loss: 0.205
+[2024-10-31 12:51:07,241] INFO: Iter 1000 Summary: 
+[2024-10-31 12:51:07,242] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.27697450426220893
+[2024-10-31 12:51:07,526] INFO: 	 Test loss: 0.16500000000000004
+[2024-10-31 12:51:08,194] INFO: Testing with subject ['S9'] 
+[2024-10-31 12:51:08,194] INFO: Training with subjects ['S8', 'S10', 'S4', 'S5', 'S3', 'S6', 'S7'] 
+[2024-10-31 12:51:31,661] INFO: Iter 500 Summary: 
+[2024-10-31 12:51:31,661] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.2933918402791023
+[2024-10-31 12:51:31,945] INFO: 	 Test loss: 0.195
+[2024-10-31 12:51:55,361] INFO: Iter 1000 Summary: 
+[2024-10-31 12:51:55,361] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.26451438370347025
+[2024-10-31 12:51:55,649] INFO: 	 Test loss: 0.1825
+[2024-10-31 12:51:56,328] INFO: Testing with subject ['S10'] 
+[2024-10-31 12:51:56,328] INFO: Training with subjects ['S8', 'S9', 'S4', 'S5', 'S3', 'S6', 'S7'] 
+[2024-10-31 12:52:19,833] INFO: Iter 500 Summary: 
+[2024-10-31 12:52:19,833] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.30034644585847853
+[2024-10-31 12:52:20,082] INFO: 	 Test loss: 0.13374999999999998
+[2024-10-31 12:52:43,573] INFO: Iter 1000 Summary: 
+[2024-10-31 12:52:43,573] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.26724194559454917
+[2024-10-31 12:52:43,827] INFO: 	 Test loss: 0.12875
+[2024-10-31 12:52:44,500] INFO: Testing with subject ['S4'] 
+[2024-10-31 12:52:44,500] INFO: Training with subjects ['S8', 'S9', 'S10', 'S5', 'S3', 'S6', 'S7'] 
+[2024-10-31 12:53:07,993] INFO: Iter 500 Summary: 
+[2024-10-31 12:53:07,993] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.33787190553545954
+[2024-10-31 12:53:08,209] INFO: 	 Test loss: 0.21875
+[2024-10-31 12:53:31,636] INFO: Iter 1000 Summary: 
+[2024-10-31 12:53:31,636] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.2739601145386696
+[2024-10-31 12:53:31,847] INFO: 	 Test loss: 0.1775
+[2024-10-31 12:53:32,528] INFO: Testing with subject ['S5'] 
+[2024-10-31 12:53:32,528] INFO: Training with subjects ['S8', 'S9', 'S10', 'S4', 'S3', 'S6', 'S7'] 
+[2024-10-31 12:53:55,978] INFO: Iter 500 Summary: 
+[2024-10-31 12:53:55,978] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.30644754016399384
+[2024-10-31 12:53:56,190] INFO: 	 Test loss: 0.18625
+[2024-10-31 12:54:19,543] INFO: Iter 1000 Summary: 
+[2024-10-31 12:54:19,543] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.26440487626194953
+[2024-10-31 12:54:19,756] INFO: 	 Test loss: 0.18375
+[2024-10-31 12:54:20,427] INFO: Testing with subject ['S3'] 
+[2024-10-31 12:54:20,427] INFO: Training with subjects ['S8', 'S9', 'S10', 'S4', 'S5', 'S6', 'S7'] 
+[2024-10-31 12:54:43,930] INFO: Iter 500 Summary: 
+[2024-10-31 12:54:43,931] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.30862704482674597
+[2024-10-31 12:54:44,180] INFO: 	 Test loss: 0.27749999999999997
+[2024-10-31 12:55:07,652] INFO: Iter 1000 Summary: 
+[2024-10-31 12:55:07,652] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.2760629093945026
+[2024-10-31 12:55:07,901] INFO: 	 Test loss: 0.22999999999999998
+[2024-10-31 12:55:08,633] INFO: Testing with subject ['S6'] 
+[2024-10-31 12:55:08,633] INFO: Training with subjects ['S8', 'S9', 'S10', 'S4', 'S5', 'S3', 'S7'] 
+[2024-10-31 12:55:32,146] INFO: Iter 500 Summary: 
+[2024-10-31 12:55:32,146] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.30671718472242354
+[2024-10-31 12:55:32,398] INFO: 	 Test loss: 0.21750000000000003
+[2024-10-31 12:55:55,705] INFO: Iter 1000 Summary: 
+[2024-10-31 12:55:55,706] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.2694042842388153
+[2024-10-31 12:55:55,953] INFO: 	 Test loss: 0.22875
+[2024-10-31 12:55:56,619] INFO: Testing with subject ['S7'] 
+[2024-10-31 12:55:56,619] INFO: Training with subjects ['S8', 'S9', 'S10', 'S4', 'S5', 'S3', 'S6'] 
+[2024-10-31 12:56:19,933] INFO: Iter 500 Summary: 
+[2024-10-31 12:56:19,933] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.2935148178935051
+[2024-10-31 12:56:20,181] INFO: 	 Test loss: 0.19
+[2024-10-31 12:56:43,372] INFO: Iter 1000 Summary: 
+[2024-10-31 12:56:43,372] INFO: 	 lr: 0.0002999999999999974 	 Training loss: 0.2579457090497017
+[2024-10-31 12:56:43,625] INFO: 	 Test loss: 0.18
+[2024-10-31 12:56:43,636] INFO: Mean L2_body is 0.18453124999999998
+[2024-10-31 12:56:43,636] INFO: Under 35 is 100.0
+[2024-10-31 12:56:43,636] INFO: Under 40 is 100.0
+[2024-10-31 12:56:43,636] INFO: Metrics are {'L2_body': [0.16500000000000004, 0.1825, 0.12875, 0.1775, 0.18375, 0.22999999999999998, 0.22875, 0.18], 'under_0.35m': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], 'under_0.40m': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], 'RH_L2': []}

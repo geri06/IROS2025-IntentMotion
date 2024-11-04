@@ -159,8 +159,8 @@ class HandoverDataset(data.Dataset):
                 motion = motion[idx]
 
         # define input and target of motion
-        handover_motion_input = motion[:self.handover_motion_input_length] / 1000 # meter
-        handover_motion_target = motion[self.handover_motion_input_length:] / 1000 # meter
+        handover_motion_input = motion[:self.handover_motion_input_length] # meter
+        handover_motion_target = motion[self.handover_motion_input_length:]  # meter
 
         # change to float
         handover_motion_input = handover_motion_input.float()

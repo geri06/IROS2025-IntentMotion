@@ -112,23 +112,23 @@ C.motion_gcn_out.num_stage = 12
 C.motion_gcn_out.gcn_out = False
 
 """Train Config"""
-C.batch_size = 256
+C.batch_size = 128
 C.num_workers = 6
 
 C.cos_lr_max=1e-5
 C.cos_lr_min=5e-8
-C.cos_lr_total_iters=40000
+C.cos_lr_total_iters=1000
 
 C.weight_decay = 1e-4
 C.model_pth = None
 
 """Eval Config"""
 C.shift_step = 1
-C.eval_every = 100
+C.eval_every = 500
 C.actions_to_load = "all" # add actions between brackets: ["walking", "smoking"]
 
 """Display Config"""
-C.print_every = 100
+C.print_every = 500
 C.save_every = 5000
 
 if __name__ == '__main__':

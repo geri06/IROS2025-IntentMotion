@@ -73,15 +73,15 @@ def regress_pred(model, pbar, num_samples, m_p3d_h36):
                     # we add the input last frame tensor in the step frames predicted from the output (cause to displacement prediction)
                     output = output + motion_input[:, -1:, :].repeat(1,step,1)
 
-            # reshape output to be (b,step,66), for some reason is done in 2 lines
+            # reshape output to be (b,step,27), for some reason is done in 2 lines
             output = output.reshape(-1, 9*3)
             output = output.reshape(b,step,-1)
             outputs.append(output)
             # delete the first step frames in input and add the output step frames at the end.
             motion_input = torch.cat([motion_input[:, step:], output], axis=1)
+
         # concatenate outputs and keep the first 25
         motion_pred = torch.cat(outputs, axis=1)[:,:25]
-
         # use detach to avoid this tensor being tracked with gradient computations
         motion_target = motion_target.detach()
         b,n,c,_ = motion_target.shape
@@ -91,7 +91,7 @@ def regress_pred(model, pbar, num_samples, m_p3d_h36):
         motion_pred = motion_pred.detach().cpu()
 
         # compute L2 distance between joints pred and goal, compute mean of joints diff in each time frame, sum the values of each time frame in each batch.
-        mpjpe_p3d_h36 = torch.sum(torch.mean(torch.norm(motion_pred*1000 - motion_gt*1000, dim=3), dim=2), dim=0)
+        mpjpe_p3d_h36 = torch.sum(torch.mean(torch.norm(motion_pred - motion_gt, dim=3), dim=2), dim=0)
         # accumulate loss for each batch of data
         m_p3d_h36 += mpjpe_p3d_h36.cpu().numpy()
     # compute mean loss diving by the total number of batches giving the mean loss error per timestep

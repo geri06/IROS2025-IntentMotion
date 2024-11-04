@@ -8,11 +8,10 @@ from exps.baseline_handover.config import config
 
 
 class HandoverEvalDataset(data.Dataset):
-    def __init__(self, config, split_name, data_aug=False):
+    def __init__(self, config, split_name):
         super(HandoverEvalDataset, self).__init__()
         # data paertition (validation test or train)
         self._split_name = split_name
-        self.data_aug = data_aug
         self.sample_rate = 1
 
         # Dir h36
@@ -146,17 +145,10 @@ class HandoverEvalDataset(data.Dataset):
                                   start_frame + self.handover_motion_input_length + self.handover_motion_target_length)
         # seqs correspondant to frame indexes shape (50+10, 9*3)
         motion = self.handover_seqs[idx][frame_indexes]
-        if self.data_aug:
-            # random to apply data aug
-            if torch.rand(1)[0] > .5:
-                # reverse indexes to reverse motion seq
-                idx = [i for i in range(motion.size(0) - 1, -1, -1)]
-                idx = torch.LongTensor(idx)
-                motion = motion[idx]
 
         # define input and target of motion
-        handover_motion_input = motion[:self.handover_motion_input_length] / 1000  # meter
-        handover_motion_target = motion[self.handover_motion_input_length:] / 1000  # meter
+        handover_motion_input = motion[:self.handover_motion_input_length]  # meter
+        handover_motion_target = motion[self.handover_motion_input_length:]  # meter
 
         # change to float
         handover_motion_input = handover_motion_input.float()
@@ -166,8 +158,9 @@ class HandoverEvalDataset(data.Dataset):
 
 if __name__ == "__main__":
     config.motion.handover_target_length = config.motion.handover_target_length_eval
-    dataset = HandoverEvalDataset(config, 'test', False)
+    dataset = HandoverEvalDataset(config, 'test')
     input, target = dataset[5]
 
+    print(len(dataset))
     print(input.shape)
     print(target.shape)

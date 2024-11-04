@@ -4,6 +4,7 @@ import json
 import math
 import numpy as np
 import copy
+import itertools
 
 from config import config
 from model import siMLPe as Model
@@ -164,115 +165,161 @@ def train_step(handover_motion_input, handover_motion_target, model, optimizer, 
     # loss.item() returns the value of loss tensor as float.
     return loss.item(), optimizer, current_lr
 
-# Create model instance
-model = Model(config)
-model.train()
-model.cuda()
+def subject_splits():
+    subjects = []
 
-# define target lenght com target lenght train
-config.motion.handover_target_length = config.motion.handover_target_length_train
-# create instance of handoverDataset
-dataset = HandoverDataset(config, 'train', config.data_aug)
+    subjects += np.loadtxt(
+        os.path.join(config.handover_anno_dir.replace('handover', ''), "handover_train.txt"), dtype=str
+    ).tolist()
 
-shuffle = True
-# Be careful cause sampler overrides shuffle if != None
-sampler = None
-# create instance of dataloader with its parameters (drop last drops the last incomplete batch)
-# pin_memory improves speed between CPU and GPU
-dataloader = DataLoader(dataset, batch_size=config.batch_size,
-                        num_workers=config.num_workers, drop_last=True,
-                        sampler=sampler, shuffle=shuffle, pin_memory=True)
+    test_subj = open(
+        os.path.join(config.handover_anno_dir.replace('handover', ''), "handover_test.txt"), 'r'
+    ).readlines()[0].strip()
 
-# Define eval_config teh same as config with small changes
-eval_config = copy.deepcopy(config)
-# change handover_target_length with handover_target_length_eval
-eval_config.motion.handover_target_length = eval_config.motion.handover_target_length_eval
-# create instance of eval dataset (why test?)
-eval_dataset = HandoverEvalDataset(eval_config, 'test')
-
-# repeat process to load eval data (no shuffle nor drop last)
-shuffle = False
-sampler = None
-eval_dataloader = DataLoader(eval_dataset, batch_size=128,
-                        num_workers=1, drop_last=False,
-                        sampler=sampler, shuffle=shuffle, pin_memory=True)
+    subjects.append(test_subj)
+    # Generate all train/test splits: Leave-One-Subject-Out or Leave-Two-Subjects-Out
+    num_to_leave_out = 1  # You can change this to 2 for Leave-Two-Subjects-Out, etc.
+    splits = list(itertools.combinations(subjects, num_to_leave_out))
+    return splits, subjects
 
 
-# initialize optimizer
-optimizer = torch.optim.Adam(model.parameters(),
-                             lr=config.cos_lr_max,
-                             weight_decay=config.weight_decay)
+### ------------ Training with cross validation ------------- ###
+metrics = {"L2_body": [], "under_0.35m":[], "under_0.40m":[], "RH_L2":[]}
 
 # crete logger and stuff to add log files with config and info
 ensure_dir(config.snapshot_dir)
 logger = get_logger(config.log_file, 'train')
 link_file(config.log_file, config.link_log_file)
-
 print_and_log_info(logger, json.dumps(config, indent=4, sort_keys=True))
 
-# load the model if a path is provided
-if config.model_pth is not None :
-    state_dict = torch.load(config.model_pth)
-    model.load_state_dict(state_dict, strict=True)
-    print_and_log_info(logger, "Loading model path from {} ".format(config.model_pth))
+# Obtain subjects combinations
+splits, all_subjects = subject_splits()
 
-##### ------ training ------- #####
-nb_iter = 0
-avg_loss = 0.
-avg_lr = 0.
+for split in splits:
+    # Define train and test sets
+    test_subjects = list(split)
+    train_subjects = [s for s in all_subjects if s not in test_subjects]
+    # Create text files for the current split
+    with open("data/handover_train.txt", "w") as f:
+        f.write("\n".join(train_subjects))
+    with open("data/handover_test.txt", "w") as f:
+        f.write("\n".join(test_subjects))
 
-# until max num iters
-while (nb_iter + 1) < config.cos_lr_total_iters:
-    # iterates over batches of data from the dataloder
-    for (handover_motion_input, handover_motion_target) in dataloader:
+    # Create model instance
+    model = Model(config)
+    model.train()
+    model.cuda()
 
-        # compute the train step and save loss, lr and opt
-        loss, optimizer, current_lr = train_step(handover_motion_input, handover_motion_target, model, optimizer, nb_iter, config.cos_lr_total_iters, config.cos_lr_max, config.cos_lr_min)
-        # save avg loss and lr to add it to the log file
-        avg_loss += loss
-        avg_lr += current_lr
+    # define target lenght com target lenght train
+    config.motion.handover_target_length = config.motion.handover_target_length_train
+    # create instance of handoverDataset
+    dataset = HandoverDataset(config, 'train', config.data_aug)
 
-#10 like training in mm
-        # every config.print_every we print and log avg_loss and avg_lr
-        if (nb_iter + 1) % config.print_every ==  0 :
-            avg_loss = avg_loss / config.print_every
-            avg_lr = avg_lr / config.print_every
-            print_and_log_info(logger, "Iter {} Summary: ".format(nb_iter + 1))
-            print_and_log_info(logger, f"\t lr: {avg_lr} \t Training loss: {avg_loss}")
-            avg_loss = 0
-            avg_lr = 0
+    shuffle = True
+    # Be careful cause sampler overrides shuffle if != None
+    sampler = None
+    # create instance of dataloader with its parameters (drop last drops the last incomplete batch)
+    # pin_memory improves speed between CPU and GPU
+    dataloader = DataLoader(dataset, batch_size=config.batch_size,
+                            num_workers=config.num_workers, drop_last=True,
+                            sampler=sampler, shuffle=shuffle, pin_memory=True)
 
-        if (nb_iter + 1) % config.eval_every == 0 :
-            model.eval()
-            # calc loss in all timeframes
-            acc_tmp = test(eval_config, model, eval_dataloader)
-            print(acc_tmp)
-            avg_test_loss = np.mean(np.array(acc_tmp))  # mean of all time frames
-            writer.add_scalar('Test Loss/angle', avg_test_loss, nb_iter)
-            print_and_log_info(logger, f"\t Test loss: {avg_test_loss}")
-            model.train()
+    # Define eval_config teh same as config with small changes
+    eval_config = copy.deepcopy(config)
+    # change handover_target_length with handover_target_length_eval
+    eval_config.motion.handover_target_length = eval_config.motion.handover_target_length_eval
+    # create instance of eval dataset (why test?)
+    eval_dataset = HandoverEvalDataset(eval_config, 'test')
 
-        # every config.save_every we save the model
-        if (nb_iter + 1) % config.save_every ==  0 :
-            torch.save(model.state_dict(), config.snapshot_dir + '/model-iter-' + str(nb_iter + 1) + '.pth')
-            # eval model
-            model.eval()
-            # calc loss
-            acc_tmp = test(eval_config, model, eval_dataloader)
+    # repeat process to load eval data (no shuffle nor drop last)
+    shuffle = False
+    sampler = None
+    eval_dataloader = DataLoader(eval_dataset, batch_size=128,
+                            num_workers=1, drop_last=False,
+                            sampler=sampler, shuffle=shuffle, pin_memory=True)
 
-            print(acc_tmp)
-            acc_log.write(''.join(str(nb_iter + 1) + '\n'))
-            line = ''
-            for ii in acc_tmp:
-                line += str(ii) + ' '
-            line += '\n'
-            acc_log.write(''.join(line))
-            # keep training the model
-            model.train()
 
-        # stop training when we reach max iter
-        if (nb_iter + 1) == config.cos_lr_total_iters :
-            break
-        nb_iter += 1
+    # initialize optimizer
+    optimizer = torch.optim.Adam(model.parameters(),
+                                 lr=config.cos_lr_max,
+                                 weight_decay=config.weight_decay)
 
-writer.close()
+    # load the model if a path is provided
+    if config.model_pth is not None :
+        state_dict = torch.load(config.model_pth)
+        model.load_state_dict(state_dict, strict=True)
+        print_and_log_info(logger, "Loading model path from {} ".format(config.model_pth))
+
+    print_and_log_info(logger, "Testing with subject {} ".format(test_subjects))
+    print_and_log_info(logger, "Training with subjects {} ".format(train_subjects))
+
+    ##### ------ training ------- #####
+    nb_iter = 0
+    avg_loss = 0.
+    avg_lr = 0.
+
+    # until max num iters
+    while (nb_iter + 1) < config.cos_lr_total_iters:
+        # iterates over batches of data from the dataloder
+        for (handover_motion_input, handover_motion_target) in dataloader:
+
+            # compute the train step and save loss, lr and opt
+            loss, optimizer, current_lr = train_step(handover_motion_input, handover_motion_target, model, optimizer, nb_iter, config.cos_lr_total_iters, config.cos_lr_max, config.cos_lr_min)
+            # save avg loss and lr to add it to the log file
+            avg_loss += loss
+            avg_lr += current_lr
+
+    #10 like training in mm
+            # every config.print_every we print and log avg_loss and avg_lr
+            if (nb_iter + 1) % config.print_every ==  0 :
+                avg_loss = avg_loss / config.print_every
+                avg_lr = avg_lr / config.print_every
+                print_and_log_info(logger, "Iter {} Summary: ".format(nb_iter + 1))
+                print_and_log_info(logger, f"\t lr: {avg_lr} \t Training loss: {avg_loss}")
+                avg_loss = 0
+                avg_lr = 0
+
+            if (nb_iter + 1) % config.eval_every == 0 :
+                model.eval()
+                # calc loss in all timeframes
+                acc_tmp = test(eval_config, model, eval_dataloader)
+                print(acc_tmp)
+                avg_test_loss = np.mean(np.array(acc_tmp)) # mean of all time frames
+                writer.add_scalar('Test Loss/angle', avg_test_loss, nb_iter)
+                print_and_log_info(logger, f"\t Test loss: {avg_test_loss}")
+                model.train()
+
+            # every config.save_every we save the model
+            if (nb_iter + 1) % config.save_every ==  0 :
+                torch.save(model.state_dict(), config.snapshot_dir + '/model-iter-' + str(nb_iter + 1) + '.pth')
+                # eval model
+                model.eval()
+                # calc loss
+                acc_tmp = test(eval_config, model, eval_dataloader)
+
+                print(acc_tmp)
+                acc_log.write(''.join(str(nb_iter + 1) + '\n'))
+                line = ''
+                for ii in acc_tmp:
+                    line += str(ii) + ' '
+                line += '\n'
+                acc_log.write(''.join(line))
+                # keep training the model
+                model.train()
+
+            # stop training when we reach max iter
+            if (nb_iter + 1) == config.cos_lr_total_iters :
+                metrics["L2_body"].append(np.mean(np.array(acc_tmp)))
+                under_35 = [1 if val<= 0.35 else 0 for val in acc_tmp ]
+                metrics["under_0.35m"].extend(under_35)
+                under_40 = [1 if val <= 0.40 else 0 for val in acc_tmp]
+                metrics["under_0.40m"].extend(under_40)
+                break
+            nb_iter += 1
+
+    writer.close()
+
+print_and_log_info(logger, "Mean L2_body is {}".format(sum(metrics["L2_body"])/len(metrics["L2_body"])))
+print_and_log_info(logger, "Under 35 is {}".format(100*sum(metrics["under_0.35m"])/len(metrics["under_0.35m"])))
+print_and_log_info(logger, "Under 40 is {}".format(100*sum(metrics["under_0.40m"])/len(metrics["under_0.40m"])))
+print_and_log_info(logger, "Metrics are {}".format(metrics))
