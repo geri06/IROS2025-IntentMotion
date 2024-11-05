@@ -7,6 +7,7 @@ from config  import config
 from model import siMLPe as Model
 from datasets.handover_eval import HandoverEvalDataset
 from utils.misc import rotmat2xyz_torch, rotmat2euler_torch
+from lib.utils.loss import L2_right_hand, L2_body
 
 import torch
 from torch.utils.data import DataLoader
@@ -34,7 +35,7 @@ dct_m = torch.tensor(dct_m).float().cuda().unsqueeze(0)
 idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
 
 # pbar is == dataloader
-def regress_pred(model, pbar, num_samples, m_p3d_h36):
+def regress_pred(model, pbar, num_samples, m_p3d_h36, right_hand_loss):
     """
     Do the prediction of the data and compute mean loss per joint for each time frame
     """
@@ -91,27 +92,32 @@ def regress_pred(model, pbar, num_samples, m_p3d_h36):
         motion_pred = motion_pred.detach().cpu()
 
         # compute L2 distance between joints pred and goal, compute mean of joints diff in each time frame, sum the values of each time frame in each batch.
-        mpjpe_p3d_h36 = torch.sum(torch.mean(torch.norm(motion_pred - motion_gt, dim=3), dim=2), dim=0)
+        mpjpe_p3d_h36 = L2_body(motion_gt, motion_pred)
         # accumulate loss for each batch of data
         m_p3d_h36 += mpjpe_p3d_h36.cpu().numpy()
+        right_hand_loss_batch = L2_right_hand(motion_gt, motion_pred)
+        right_hand_loss += right_hand_loss_batch.cpu().numpy()
     # compute mean loss diving by the total number of batches giving the mean loss error per timestep
     m_p3d_h36 = m_p3d_h36 / num_samples
-    return m_p3d_h36
+    right_hand_loss = right_hand_loss / num_samples
+    print("RH mean loss:",sum(right_hand_loss)/len(right_hand_loss))
+    return m_p3d_h36, right_hand_loss
 
 def test(config, model, dataloader) :
 
     m_p3d_h36 = np.zeros([config.motion.handover_target_length])
+    right_hand_loss = np.zeros([config.motion.handover_target_length])
     titles = np.array(range(config.motion.handover_target_length)) + 1
     num_samples = 0
 
     pbar = dataloader
-    m_p3d_h36  = regress_pred(model, pbar, num_samples, m_p3d_h36)
+    m_p3d_h36, right_hand_loss  = regress_pred(model, pbar, num_samples, m_p3d_h36,right_hand_loss)
 
     # This returns a dictionary with the correspondant loss to each time frame in results time frames
     ret = {}
     for j in range(config.motion.handover_target_length):
         ret["#{:d}".format(titles[j])] = [m_p3d_h36[j], m_p3d_h36[j]]
-    return [round(ret[key][0], 2) for key in results_keys]
+    return [round(ret[key][0], 2) for key in results_keys], right_hand_loss
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)

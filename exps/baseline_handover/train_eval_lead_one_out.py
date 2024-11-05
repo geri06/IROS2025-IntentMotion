@@ -184,7 +184,7 @@ def subject_splits():
 
 
 ### ------------ Training with cross validation ------------- ###
-metrics = {"L2_body": [], "under_0.35m":[], "under_0.40m":[], "RH_L2":[]}
+metrics = {"L2_body": [], "under_0.35m":[], "under_0.40m":[], "L2_right_hand":[]}
 
 # crete logger and stuff to add log files with config and info
 ensure_dir(config.snapshot_dir)
@@ -262,7 +262,6 @@ for split in splits:
     while (nb_iter + 1) < config.cos_lr_total_iters:
         # iterates over batches of data from the dataloder
         for (handover_motion_input, handover_motion_target) in dataloader:
-
             # compute the train step and save loss, lr and opt
             loss, optimizer, current_lr = train_step(handover_motion_input, handover_motion_target, model, optimizer, nb_iter, config.cos_lr_total_iters, config.cos_lr_max, config.cos_lr_min)
             # save avg loss and lr to add it to the log file
@@ -282,7 +281,7 @@ for split in splits:
             if (nb_iter + 1) % config.eval_every == 0 :
                 model.eval()
                 # calc loss in all timeframes
-                acc_tmp = test(eval_config, model, eval_dataloader)
+                acc_tmp,L2_rh = test(eval_config, model, eval_dataloader)
                 print(acc_tmp)
                 avg_test_loss = np.mean(np.array(acc_tmp)) # mean of all time frames
                 writer.add_scalar('Test Loss/angle', avg_test_loss, nb_iter)
@@ -310,6 +309,7 @@ for split in splits:
             # stop training when we reach max iter
             if (nb_iter + 1) == config.cos_lr_total_iters :
                 metrics["L2_body"].append(np.mean(np.array(acc_tmp)))
+                metrics["L2_right_hand"].append(np.mean(np.array(L2_rh)))
                 under_35 = [1 if val<= 0.35 else 0 for val in acc_tmp ]
                 metrics["under_0.35m"].extend(under_35)
                 under_40 = [1 if val <= 0.40 else 0 for val in acc_tmp]
@@ -320,6 +320,7 @@ for split in splits:
     writer.close()
 
 print_and_log_info(logger, "Mean L2_body is {}".format(sum(metrics["L2_body"])/len(metrics["L2_body"])))
+print_and_log_info(logger, "Mean L2_right_hand is {}".format(sum(metrics["L2_right_hand"])/len(metrics["L2_right_hand"])))
 print_and_log_info(logger, "Under 35 is {}".format(100*sum(metrics["under_0.35m"])/len(metrics["under_0.35m"])))
 print_and_log_info(logger, "Under 40 is {}".format(100*sum(metrics["under_0.40m"])/len(metrics["under_0.40m"])))
 print_and_log_info(logger, "Metrics are {}".format(metrics))

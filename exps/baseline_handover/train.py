@@ -245,8 +245,9 @@ while (nb_iter + 1) < config.cos_lr_total_iters:
         if (nb_iter + 1) % config.eval_every == 0 :
             model.eval()
             # calc loss in all timeframes
-            acc_tmp = test(eval_config, model, eval_dataloader)
-            print(acc_tmp)
+            acc_tmp, rh_loss = test(eval_config, model, eval_dataloader)
+            print("L2_body",acc_tmp)
+            print("L2_right_hand",rh_loss)
             avg_test_loss = np.mean(np.array(acc_tmp))  # mean of all time frames
             writer.add_scalar('Test Loss/angle', avg_test_loss, nb_iter)
             print_and_log_info(logger, f"\t Test loss: {avg_test_loss}")

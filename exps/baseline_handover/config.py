@@ -117,18 +117,19 @@ C.num_workers = 6
 
 C.cos_lr_max=1e-5
 C.cos_lr_min=5e-8
-C.cos_lr_total_iters=1000
+C.cos_lr_total_iters=5000
 
 C.weight_decay = 1e-4
 C.model_pth = None
 
 """Eval Config"""
 C.shift_step = 1
-C.eval_every = 500
+C.eval_every = 100
 C.actions_to_load = "all" # add actions between brackets: ["walking", "smoking"]
+# C.loss_eval = "L2_body" # "L2_body", "L2_right_hand", "L2_body_last_frame"
 
 """Display Config"""
-C.print_every = 500
+C.print_every = 100
 C.save_every = 5000
 
 if __name__ == '__main__':
