@@ -246,11 +246,15 @@ while (nb_iter + 1) < config.cos_lr_total_iters:
             model.eval()
             # calc loss in all timeframes
             acc_tmp, rh_loss = test(eval_config, model, eval_dataloader)
-            print("L2_body",acc_tmp)
-            print("L2_right_hand",rh_loss)
-            avg_test_loss = np.mean(np.array(acc_tmp))  # mean of all time frames
-            writer.add_scalar('Test Loss/angle', avg_test_loss, nb_iter)
-            print_and_log_info(logger, f"\t Test loss: {avg_test_loss}")
+            avg_rh_loss = np.mean(np.array(rh_loss))
+            avg_l2_body_loss = np.mean(np.array(acc_tmp))  # mean of all time frames
+            print("Iteration:",nb_iter)
+            print("L2_body test", round(avg_l2_body_loss,3))
+            print("L2_right_hand test", round(avg_rh_loss,3))
+            writer.add_scalar('Body Test Loss', avg_l2_body_loss, nb_iter)
+            print_and_log_info(logger, f"\t Body Test loss: {avg_l2_body_loss}")
+            writer.add_scalar('RH Test Loss', avg_rh_loss, nb_iter)
+            print_and_log_info(logger, f"\t RH Test loss: {avg_rh_loss}")
             model.train()
 
         # every config.save_every we save the model
@@ -259,9 +263,10 @@ while (nb_iter + 1) < config.cos_lr_total_iters:
             # eval model
             model.eval()
             # calc loss
-            acc_tmp = test(eval_config, model, eval_dataloader)
+            acc_tmp, rh_loss = test(eval_config, model, eval_dataloader)
 
-            print(acc_tmp)
+            print("Body loss values", acc_tmp)
+            print("RH loss values", rh_loss)
             acc_log.write(''.join(str(nb_iter + 1) + '\n'))
             line = ''
             for ii in acc_tmp:

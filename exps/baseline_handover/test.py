@@ -100,7 +100,6 @@ def regress_pred(model, pbar, num_samples, m_p3d_h36, right_hand_loss):
     # compute mean loss diving by the total number of batches giving the mean loss error per timestep
     m_p3d_h36 = m_p3d_h36 / num_samples
     right_hand_loss = right_hand_loss / num_samples
-    print("RH mean loss:",sum(right_hand_loss)/len(right_hand_loss))
     return m_p3d_h36, right_hand_loss
 
 def test(config, model, dataloader) :
