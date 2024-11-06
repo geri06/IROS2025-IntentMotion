@@ -194,8 +194,12 @@ def data_to_viz(model, pbar, num_samples, n_viz):
                                                                           fig, ax), interval=70, blit=False)
         plt.show()
 
-        line_anim.save('./visualizations/pred{}/human_viz{}.gif'.format(25, i), writer='pillow')
-        print('./visualizations/pred{}/human_viz{}.gif'.format(25, i))
+        if config.viz_GCN_folder:
+            line_anim.save('./visualizations/pred-GCN{}/human_viz{}.gif'.format(25, i), writer='pillow')
+            print('./visualizations/pred-GCN{}/human_viz{}.gif'.format(25, i))
+        else:
+            line_anim.save('./visualizations/pred{}/human_viz{}.gif'.format(25, i), writer='pillow')
+            print('./visualizations/pred{}/human_viz{}.gif'.format(25, i))
         if cnt == n_viz - 1:
             break
 
@@ -258,6 +262,6 @@ if __name__ == '__main__':
     parser.add_argument('--model-pth', type=str, default=None, help='=encoder path')
     args = parser.parse_args()
     print(args.model_pth)
-    visualize(args.model_pth,1)
+    visualize(args.model_pth,5)
 
 

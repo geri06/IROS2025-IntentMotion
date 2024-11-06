@@ -101,6 +101,7 @@ class GCN(nn.Module):
         self.gc1 = GraphConvolution(input_feature, hidden_feature, node_n=node_n)
         self.bn1 = nn.BatchNorm1d(node_n * hidden_feature)
 
+
         self.gcbs = []
         for i in range(num_stage):
             self.gcbs.append(GC_Block(hidden_feature, p_dropout=p_dropout, node_n=node_n))
@@ -118,11 +119,12 @@ class GCN(nn.Module):
         y = self.bn1(y.view(b, -1)).view(b, n, f)
         y = self.act_f(y)
         y = self.do(y)
-
+        """
         for i in range(self.num_stage):
             y = self.gcbs[i](y)
 
         y = self.gc7(y)
+        """
         if is_out_resi:
             y = y + x
         return y

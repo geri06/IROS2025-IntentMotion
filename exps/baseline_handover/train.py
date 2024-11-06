@@ -75,7 +75,7 @@ def update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer) :
     """
     Reduce learning rate to min_lr after 30000 iterations
     """
-    if nb_iter > 30000:
+    if nb_iter > 7000:
         current_lr = 1e-5
     else:
         current_lr = 3e-4
@@ -259,12 +259,14 @@ while (nb_iter + 1) < config.cos_lr_total_iters:
 
         # every config.save_every we save the model
         if (nb_iter + 1) % config.save_every ==  0 :
-            torch.save(model.state_dict(), config.snapshot_dir + '/model-iter-' + str(nb_iter + 1) + '.pth')
+            if config.motion_gcn_in.gcn_in:
+                torch.save(model.state_dict(), config.snapshot_dir + '/model-GCN-iter-' + str(nb_iter + 1) + '.pth')
+            else:
+                torch.save(model.state_dict(), config.snapshot_dir + '/model-iter-' + str(nb_iter + 1) + '.pth')
             # eval model
             model.eval()
             # calc loss
             acc_tmp, rh_loss = test(eval_config, model, eval_dataloader)
-
             print("Body loss values", acc_tmp)
             print("RH loss values", rh_loss)
             acc_log.write(''.join(str(nb_iter + 1) + '\n'))
@@ -278,6 +280,9 @@ while (nb_iter + 1) < config.cos_lr_total_iters:
 
         # stop training when we reach max iter
         if (nb_iter + 1) == config.cos_lr_total_iters :
+            total_params = sum(p.numel() for p in model.parameters())
+            print_and_log_info(logger, f"\t Total number of parameters: {total_params}")
+            print(f"Total number of parameters: {total_params}")
             break
         nb_iter += 1
 
