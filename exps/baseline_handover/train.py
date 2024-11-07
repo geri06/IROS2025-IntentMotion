@@ -156,8 +156,13 @@ def train_step(handover_motion_input, handover_motion_target, model, optimizer, 
     loss.backward()
     # update paràmeters
     optimizer.step()
-    # update optimizer and lr using update_lr_multistep
-    optimizer, current_lr = update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer)
+    # we set lr to min when config.lr_cos_total_iter is exceeded
+    if nb_iter >= config.cos_lr_total_iters:
+        current_lr = config.cos_lr_min
+    else: # save lr and update optimizer
+        current_lr = optimizer.param_groups[0]["lr"]
+        scheduler.step()
+    # optimizer, current_lr = update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer)
     # Save current lr to tensorboard
     writer.add_scalar('LR/train', current_lr, nb_iter)
 
@@ -203,6 +208,9 @@ optimizer = torch.optim.Adam(model.parameters(),
                              lr=config.cos_lr_max,
                              weight_decay=config.weight_decay)
 
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config.cos_lr_total_iters, eta_min=config.cos_lr_min)
+
+
 # crete logger and stuff to add log files with config and info
 ensure_dir(config.snapshot_dir)
 logger = get_logger(config.log_file, 'train')
@@ -222,7 +230,7 @@ avg_loss = 0.
 avg_lr = 0.
 
 # until max num iters
-while (nb_iter + 1) < config.cos_lr_total_iters:
+while (nb_iter + 1) < config.total_iters:
     # iterates over batches of data from the dataloder
     for (handover_motion_input, handover_motion_target) in dataloader:
 
@@ -279,7 +287,7 @@ while (nb_iter + 1) < config.cos_lr_total_iters:
             model.train()
 
         # stop training when we reach max iter
-        if (nb_iter + 1) == config.cos_lr_total_iters :
+        if (nb_iter + 1) == config.total_iters :
             total_params = sum(p.numel() for p in model.parameters())
             print_and_log_info(logger, f"\t Total number of parameters: {total_params}")
             print(f"Total number of parameters: {total_params}")

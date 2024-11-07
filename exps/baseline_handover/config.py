@@ -115,22 +115,23 @@ C.motion_gcn_out.gcn_out = False
 C.batch_size = 256
 C.num_workers = 6
 
-C.cos_lr_max=1e-5
-C.cos_lr_min=5e-8
-C.cos_lr_total_iters=7500
+C.cos_lr_max=1e-2
+C.cos_lr_min=1e-5
+C.cos_lr_total_iters=5000
+C.total_iters=5000
 
 C.weight_decay = 1e-4
 C.model_pth = None
 
 """Eval Config"""
 C.shift_step = 1
-C.eval_every = 100
+C.eval_every = 250
 C.actions_to_load = "all" # add actions between brackets: ["walking", "smoking"]
 # C.loss_eval = "L2_body" # "L2_body", "L2_right_hand", "L2_body_last_frame"
 
 """Display Config"""
-C.print_every = 100
-C.save_every = 2500
+C.print_every = 250
+C.save_every = 5000
 C.viz_GCN_folder = C.motion_gcn_out.gcn_out
 
 if __name__ == '__main__':

@@ -65,18 +65,11 @@ def get_dct_matrix(N):
     idct_m = np.linalg.inv(dct_m)
     return dct_m, idct_m
 
-# create DCT with dimensions of input lenght data (50)
-dct_m,idct_m = get_dct_matrix(config.motion.handover_input_length_dct)
-
-# create tensor, load GPU and add 3rd dim (1,N,N) to dct matrices
-dct_m = torch.tensor(dct_m).float().cuda().unsqueeze(0)
-idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
-
 def update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer) :
     """
     Reduce learning rate to min_lr after 30000 iterations
     """
-    if nb_iter > 30000:
+    if nb_iter > 7000:
         current_lr = 1e-5
     else:
         current_lr = 3e-4
@@ -157,13 +150,25 @@ def train_step(handover_motion_input, handover_motion_target, model, optimizer, 
     loss.backward()
     # update paràmeters
     optimizer.step()
-    # update optimizer and lr using update_lr_multistep
-    optimizer, current_lr = update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer)
+    # we set lr to min when config.lr_cos_total_iter is exceeded
+    if nb_iter >= config.cos_lr_total_iters:
+        current_lr = config.cos_lr_min
+    else: # save lr and update optimizer
+        current_lr = optimizer.param_groups[0]["lr"]
+        scheduler.step()
+    # optimizer, current_lr = update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer)
     # Save current lr to tensorboard
     writer.add_scalar('LR/train', current_lr, nb_iter)
 
     # loss.item() returns the value of loss tensor as float.
     return loss.item(), optimizer, current_lr
+
+# create DCT with dimensions of input lenght data (50)
+dct_m,idct_m = get_dct_matrix(config.motion.handover_input_length_dct)
+# create tensor, load GPU and add 3rd dim (1,N,N) to dct matrices
+dct_m = torch.tensor(dct_m).float().cuda().unsqueeze(0)
+idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
+
 
 def subject_splits():
     subjects = []
@@ -187,6 +192,7 @@ def subject_splits():
 metrics = {"L2_body": [], "under_0.35m":[], "under_0.40m":[], "L2_right_hand":[]}
 
 # crete logger and stuff to add log files with config and info
+
 ensure_dir(config.snapshot_dir)
 logger = get_logger(config.log_file, 'train')
 link_file(config.log_file, config.link_log_file)
@@ -235,17 +241,19 @@ for split in splits:
     shuffle = False
     sampler = None
     eval_dataloader = DataLoader(eval_dataset, batch_size=128,
-                            num_workers=1, drop_last=False,
-                            sampler=sampler, shuffle=shuffle, pin_memory=True)
-
+                                 num_workers=1, drop_last=False,
+                                 sampler=sampler, shuffle=shuffle, pin_memory=True)
 
     # initialize optimizer
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=config.cos_lr_max,
                                  weight_decay=config.weight_decay)
 
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config.cos_lr_total_iters,
+                                                           eta_min=config.cos_lr_min)
+
     # load the model if a path is provided
-    if config.model_pth is not None :
+    if config.model_pth is not None:
         state_dict = torch.load(config.model_pth)
         model.load_state_dict(state_dict, strict=True)
         print_and_log_info(logger, "Loading model path from {} ".format(config.model_pth))
@@ -259,18 +267,21 @@ for split in splits:
     avg_lr = 0.
 
     # until max num iters
-    while (nb_iter + 1) < config.cos_lr_total_iters:
+    while (nb_iter + 1) < config.total_iters:
         # iterates over batches of data from the dataloder
         for (handover_motion_input, handover_motion_target) in dataloader:
+
             # compute the train step and save loss, lr and opt
-            loss, optimizer, current_lr = train_step(handover_motion_input, handover_motion_target, model, optimizer, nb_iter, config.cos_lr_total_iters, config.cos_lr_max, config.cos_lr_min)
+            loss, optimizer, current_lr = train_step(handover_motion_input, handover_motion_target, model, optimizer,
+                                                     nb_iter, config.cos_lr_total_iters, config.cos_lr_max,
+                                                     config.cos_lr_min)
             # save avg loss and lr to add it to the log file
             avg_loss += loss
             avg_lr += current_lr
 
-    #10 like training in mm
+            # 10 like training in mm
             # every config.print_every we print and log avg_loss and avg_lr
-            if (nb_iter + 1) % config.print_every ==  0 :
+            if (nb_iter + 1) % config.print_every == 0:
                 avg_loss = avg_loss / config.print_every
                 avg_lr = avg_lr / config.print_every
                 print_and_log_info(logger, "Iter {} Summary: ".format(nb_iter + 1))
@@ -278,25 +289,33 @@ for split in splits:
                 avg_loss = 0
                 avg_lr = 0
 
-            if (nb_iter + 1) % config.eval_every == 0 :
+            if (nb_iter + 1) % config.eval_every == 0:
                 model.eval()
                 # calc loss in all timeframes
-                acc_tmp,L2_rh = test(eval_config, model, eval_dataloader)
-                print(acc_tmp)
-                avg_test_loss = np.mean(np.array(acc_tmp)) # mean of all time frames
-                writer.add_scalar('Test Loss/angle', avg_test_loss, nb_iter)
-                print_and_log_info(logger, f"\t Test loss: {avg_test_loss}")
+                acc_tmp, rh_loss = test(eval_config, model, eval_dataloader)
+                avg_rh_loss = np.mean(np.array(rh_loss))
+                avg_l2_body_loss = np.mean(np.array(acc_tmp))  # mean of all time frames
+                print("Iteration:", nb_iter)
+                print("L2_body test", round(avg_l2_body_loss, 3))
+                print("L2_right_hand test", round(avg_rh_loss, 3))
+                writer.add_scalar('Body Test Loss', avg_l2_body_loss, nb_iter)
+                print_and_log_info(logger, f"\t Body Test loss: {avg_l2_body_loss}")
+                writer.add_scalar('RH Test Loss', avg_rh_loss, nb_iter)
+                print_and_log_info(logger, f"\t RH Test loss: {avg_rh_loss}")
                 model.train()
 
             # every config.save_every we save the model
-            if (nb_iter + 1) % config.save_every ==  0 :
-                torch.save(model.state_dict(), config.snapshot_dir + '/model-iter-' + str(nb_iter + 1) + '.pth')
+            if (nb_iter + 1) % config.save_every == 0:
+                if config.motion_gcn_in.gcn_in:
+                    torch.save(model.state_dict(), config.snapshot_dir + '/model-GCN-iter-' + str(nb_iter + 1) + '.pth')
+                else:
+                    torch.save(model.state_dict(), config.snapshot_dir + '/model-iter-' + str(nb_iter + 1) + '.pth')
                 # eval model
                 model.eval()
                 # calc loss
-                acc_tmp = test(eval_config, model, eval_dataloader)
-
-                print(acc_tmp)
+                acc_tmp, rh_loss = test(eval_config, model, eval_dataloader)
+                print("Body loss values", acc_tmp)
+                print("RH loss values", rh_loss)
                 acc_log.write(''.join(str(nb_iter + 1) + '\n'))
                 line = ''
                 for ii in acc_tmp:
@@ -307,10 +326,15 @@ for split in splits:
                 model.train()
 
             # stop training when we reach max iter
-            if (nb_iter + 1) == config.cos_lr_total_iters :
+            if (nb_iter + 1) == config.total_iters:
+                total_params = sum(p.numel() for p in model.parameters())
+                print_and_log_info(logger, f"\t Total number of parameters: {total_params}")
+                print(f"Total number of parameters: {total_params}")
+
+                # Save metrics
                 metrics["L2_body"].append(np.mean(np.array(acc_tmp)))
-                metrics["L2_right_hand"].append(np.mean(np.array(L2_rh)))
-                under_35 = [1 if val<= 0.35 else 0 for val in acc_tmp ]
+                metrics["L2_right_hand"].append(np.mean(np.array(rh_loss)))
+                under_35 = [1 if val <= 0.35 else 0 for val in acc_tmp]
                 metrics["under_0.35m"].extend(under_35)
                 under_40 = [1 if val <= 0.40 else 0 for val in acc_tmp]
                 metrics["under_0.40m"].extend(under_40)
