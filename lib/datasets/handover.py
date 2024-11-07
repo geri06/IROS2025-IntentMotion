@@ -82,7 +82,7 @@ class HandoverDataset(data.Dataset):
         for dataset in seq_names:
             print("training done in subjects:", dataset)
             for scenario in self._scenarios:
-                subjects = glob.glob(self._handover_anno_dir + '/' + dataset + '/' + scenario + '/*')
+                subjects = glob.glob(self._handover_anno_dir + dataset + '/' + scenario + '/*')
                 for subject in subjects:
                     file_list.append(subject)
 

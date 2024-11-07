@@ -157,7 +157,7 @@ def data_to_viz(model, pbar, num_samples, n_viz):
         data_pred = torch.squeeze(motion_pred, 0).cpu().data.numpy() # in meters
         data_gt = torch.squeeze(motion_target, 0).cpu().data.numpy()
 
-        i = random.randint(1, 128)
+        i = random.randint(1, b)
 
         data_pred = data_pred[i]
         data_gt = data_gt[i]

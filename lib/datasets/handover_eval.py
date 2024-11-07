@@ -76,7 +76,7 @@ class HandoverEvalDataset(data.Dataset):
             subject = subject.strip()
             print("Evaluation done in subject:", subject)
             for scenario in self._scenarios:
-                subjects = glob.glob(self._handover_anno_dir + '/' + subject + '/' + scenario + '/*')
+                subjects = glob.glob(self._handover_anno_dir + subject + '/' + scenario + '/*')
                 for s in subjects:
                     file_list.append(s)
 

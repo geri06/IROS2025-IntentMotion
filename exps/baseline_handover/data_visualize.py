@@ -185,8 +185,8 @@ def visualize_data(folder_to_viz):
     ### ----- Create visualization of data and prediction ----
 if __name__ == '__main__':
 
-    subject = "S5"
-    scenario = "straight"
+    subject = "S10"
+    scenario = "multiple_obstacles"
     folder_to_viz = f"./data/handover/{subject}/{scenario}"
     visualize_data(folder_to_viz)
 
