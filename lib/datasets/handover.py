@@ -46,6 +46,13 @@ class HandoverDataset(data.Dataset):
              96, 97, 98]  # right_hip (24, 25, 26)
         ).astype(np.int64)
 
+        self._end_effector_dims = np.array([132, 133, 134])
+
+        # Define used joints in case context is used
+        if config.motion_ree.ree_cond:
+            self._points_to_load = np.concatenate(self.used_joint_indexes,self._end_effector_dims)
+            print(len(self._points_to_load))
+
         self._scenarios = ["straight", "one_obstacle", "multiple_obstacles"]
 
         self._handover_files = self._get_handover_files()
@@ -72,10 +79,6 @@ class HandoverDataset(data.Dataset):
             seq_names += np.loadtxt(
                 os.path.join(self._handover_anno_dir.replace('handover', ''), "handover_train.txt"), dtype=str
             ).tolist()
-        else:
-            seq_names += open(
-                os.path.join(self._handover_anno_dir.replace('handover', ''), "handover_test.txt"), 'r'
-            ).readlines()
 
         # save paths of Subjects (SNum) and diverse actions into a list
         file_list = []
@@ -95,7 +98,7 @@ class HandoverDataset(data.Dataset):
             for line in info:
                 line = line.strip().split(',')
                 if len(line) > 0:
-                    line = np.array(line)[self.used_joint_indexes.astype(int)]
+                    line = np.array(line)[self._points_to_load.astype(int)]
                     the_sequence.append(np.array([float(x) for x in line]))
             # pose_info is a list of np arrays
             the_sequence = np.array(the_sequence)

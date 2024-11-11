@@ -23,10 +23,14 @@ class siMLPe(nn.Module):
         self.gcn_in = config.motion_gcn_in.gcn_in
         self.gcn_out = config.motion_gcn_out.gcn_out
 
+        # Add REE conditioning
+        self.ree_cond = config.motion_ree.ree_cond
+        self.ree_concatenation = config.motion_ree.ree_concatenation
+
 
         if self.temporal_fc_in:
             # if temporal_fc_in, Linear input and output with dimensions of dct matrix
-            self.motion_fc_in = nn.Linear(self.config.motion.h36m_input_length_dct, self.config.motion.h36m_input_length_dct)
+            self.motion_fc_in = nn.Linear(self.config.motion.handover_input_length_dct, self.config.motion.handover_input_length_dct)
         elif self.gcn_in:
             self.motion_gcn_in = GCN(self.config.motion_gcn_in.in_features, self.config.motion_gcn_in.out_features, self.config.motion_gcn_in.do, self.config.motion_gcn_in.num_stage , self.config.motion_gcn_in.n_node)
         else:
@@ -35,7 +39,7 @@ class siMLPe(nn.Module):
 
         # same with output Linear
         if self.temporal_fc_out:
-            self.motion_fc_out = nn.Linear(self.config.motion.h36m_input_length_dct, self.config.motion.h36m_input_length_dct)
+            self.motion_fc_out = nn.Linear(self.config.motion.handover_input_length_dct, self.config.motion.handover_input_length_dct)
         elif self.gcn_out:
             self.motion_gcn_out = GCN(self.config.motion_gcn_out.in_features, self.config.motion_gcn_out.out_features, self.config.motion_gcn_out.do, self.config.motion_gcn_out.num_stage , self.config.motion_gcn_out.n_node)
         else:
@@ -44,6 +48,14 @@ class siMLPe(nn.Module):
         # if gcn_out not used reset motion_fc_out params
         if not self.gcn_out:
             self.reset_parameters()
+
+        # initialize ree networks
+        if self.ree_cond:
+            self.motion_ree = nn.Linear(self.config.motion_ree.input_dim, self.config.motion_ree.output_dim)
+
+            # initialize network to reduce dim of ree and motion input concatenation (from 30 to 27)
+            if self.ree_concatenation:
+                self.motion_context = nn.Linear(self.config.motion_ree.input_dim + self.config.motion.dim, self.config.motion.dim) # TODO: check dimensions
 
     def reset_parameters(self):
         """
@@ -54,7 +66,11 @@ class siMLPe(nn.Module):
 
     def forward(self, motion_input):
 
-        # process motion input with Linear after dct transform
+        # define motion and ree input separetly
+        ree_input = motion_input[27,28,29] # canviar per self.ree coordinates de config
+        motion_input = motion_input[:-3] # select only motion input data
+
+        # process motion input without context with Linear after dct transform
         if self.temporal_fc_in:
             # transpose d and n dims to actuate on temporal dim
             motion_feats = self.arr0(motion_input)
@@ -64,9 +80,20 @@ class siMLPe(nn.Module):
             motion_feats = self.arr0(motion_feats)
         else:
             # pass motion input directly and after that transpose to start working in temporal dimension with motion mlp
-
             motion_feats = self.motion_fc_in(motion_input)
             motion_feats = self.arr0(motion_feats)
+
+        # If we want to add ree context process it through motion_ree layer and concat
+        if self.ree_cond:
+            ree_feats = self.motion_ree(ree_input)
+            ree_feats = self.arr0(ree_feats)
+
+            if self.ree_concatenation:
+                context_feats = torch.cat((motion_feats, ree_feats), dim=-1)  # TODO: check that dimensions are okay
+                motion_feats = self.motion_context(context_feats)
+            else:
+                # add context by adding values to motion input with dim 27
+                motion_feats += ree_feats
 
         # compute motion_feats with motion mlp (42 layers of MLP + LN)
         motion_feats = self.motion_mlp(motion_feats)
