@@ -23,10 +23,13 @@ class siMLPe(nn.Module):
         self.gcn_in = config.motion_gcn_in.gcn_in
         self.gcn_out = config.motion_gcn_out.gcn_out
 
+        # Add REE conditioning
+        self.ree_cond = config.motion_ree.ree_cond
+
 
         if self.temporal_fc_in:
             # if temporal_fc_in, Linear input and output with dimensions of dct matrix
-            self.motion_fc_in = nn.Linear(self.config.motion.h36m_input_length_dct, self.config.motion.h36m_input_length_dct)
+            self.motion_fc_in = nn.Linear(self.config.motion.handover_input_length_dct, self.config.motion.handover_input_length_dct)
         elif self.gcn_in:
             self.motion_gcn_in = GCN(self.config.motion_gcn_in.in_features, self.config.motion_gcn_in.out_features, self.config.motion_gcn_in.do, self.config.motion_gcn_in.num_stage , self.config.motion_gcn_in.n_node)
         else:
@@ -35,7 +38,7 @@ class siMLPe(nn.Module):
 
         # same with output Linear
         if self.temporal_fc_out:
-            self.motion_fc_out = nn.Linear(self.config.motion.h36m_input_length_dct, self.config.motion.h36m_input_length_dct)
+            self.motion_fc_out = nn.Linear(self.config.motion.handover_input_length_dct, self.config.motion.handover_input_length_dct)
         elif self.gcn_out:
             self.motion_gcn_out = GCN(self.config.motion_gcn_out.in_features, self.config.motion_gcn_out.out_features, self.config.motion_gcn_out.do, self.config.motion_gcn_out.num_stage , self.config.motion_gcn_out.n_node)
         else:
@@ -44,6 +47,10 @@ class siMLPe(nn.Module):
         # if gcn_out not used reset motion_fc_out params
         if not self.gcn_out:
             self.reset_parameters()
+
+        # initialize ree network
+        if self.ree_cond:
+            self.motion_ree = nn.Linear(self.config.motion_ree.input_dim, self.config.motion_ree.output_dim)
 
     def reset_parameters(self):
         """

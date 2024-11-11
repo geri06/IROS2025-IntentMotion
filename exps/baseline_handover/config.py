@@ -111,6 +111,13 @@ C.motion_gcn_out.do = 0
 C.motion_gcn_out.num_stage = 0
 C.motion_gcn_out.gcn_out = False
 
+# Motion Network REE
+C.motion_ree = edict()
+C.motion_ree.input_dim = 3
+C.motion_ree.output_dim = C.motion.dim
+C.motion_ree.ree_cond = True
+
+
 """Train Config"""
 C.batch_size = 256
 C.num_workers = 6

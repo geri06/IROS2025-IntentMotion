@@ -46,6 +46,8 @@ class HandoverDataset(data.Dataset):
              96, 97, 98]  # right_hip (24, 25, 26)
         ).astype(np.int64)
 
+        self._end_effector_dims = [132, 133, 134]
+
         self._scenarios = ["straight", "one_obstacle", "multiple_obstacles"]
 
         self._handover_files = self._get_handover_files()
