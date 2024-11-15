@@ -31,9 +31,9 @@ def create_pose(ax, plots, vals, pred=True, update=False):
     ]
 
     LR = [
-        False, True, False, True,
-        False, True, False, True,
-        False
+        True, False, True, False,
+        True, False, True, False,
+        True
     ]
 
     # Start and endpoints of our representation
@@ -57,7 +57,6 @@ def create_pose(ax, plots, vals, pred=True, update=False):
         #print(f"Updating line {i}: x={x}, y={y}, z={z}")
 
         if not update:
-
             if i == 0:
                 plots.append(ax.plot(x, y, z, lw=2, linestyle='--', c=lcolor if LR[i] else rcolor,
                                      label=['GT' if not pred else 'Pred']))
@@ -69,6 +68,19 @@ def create_pose(ax, plots, vals, pred=True, update=False):
             plots[i][0].set_ydata(y)
             plots[i][0].set_3d_properties(z)
             plots[i][0].set_color(lcolor if LR[i] else rcolor)
+
+    return plots
+
+def create_ree(ax, plots, vals):
+    lcolor = "#8e8e8e"
+    x = vals[0]
+    y = vals[1]
+    z = vals[2]
+
+    if len(plots) == 0:
+        plots.append((ax.scatter([x], [y], [z], color=lcolor, s=50)))
+    else:
+        plots[0]._offsets3d = ([x], [y], [z])
 
     return plots
 
@@ -98,15 +110,12 @@ def data_to_viz(model, pbar, num_samples, n_viz):
     regress_pred() from test.py modified to return pred_data and gt_data
     """
 
-    for cnt, (motion_input, motion_target) in enumerate(pbar):
+    for cnt, (motion_input, motion_target, ree_motion_input, ree_motion_target) in enumerate(pbar):
         motion_input = motion_input.cuda()
-        b, n, c, _ = motion_input.shape
+        b, n, c = motion_input.shape
         # num samples updated adding batch size
         num_samples += b
 
-        motion_input = motion_input.reshape(b, n, -1, 3)
-        # reshape to (b,n,9*3)
-        motion_input = motion_input.reshape(b, n, -1)
         outputs = []
         # how many frames are predicted in one forward pass
         step = config.motion.handover_target_length_train
@@ -123,9 +132,16 @@ def data_to_viz(model, pbar, num_samples, n_viz):
                     motion_input_ = motion_input.clone()
                     motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length],
                                                  motion_input_.cuda())
+                    if config.motion_ree.ree_cond:
+                        ree_motion_input_ = ree_motion_input.clone()
+                        ree_motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length],
+                                                         ree_motion_input_.cuda())
+                    else:
+                        ree_motion_input_ = torch.empty(0)
                 else:
                     motion_input_ = motion_input.clone()
-                output = model(motion_input_)
+                    ree_motion_input_ = torch.empty(0)
+                output = model(motion_input_, ree_motion_input_)
                 # transform output using idct_m for the rows of, handover_input_length. Then we slice to extract the first step frames of the result.
                 output = torch.matmul(idct_m[:, :config.motion.handover_input_length, :], output)[:, :step, :]
                 # if deriv output
@@ -144,8 +160,9 @@ def data_to_viz(model, pbar, num_samples, n_viz):
 
         # use detach to avoid this tensor being tracked with gradient computations
         motion_target = motion_target.detach()
-        b, n, c, _ = motion_target.shape
 
+        b, n, c = motion_target.shape
+        motion_target = motion_target.reshape(b,n, -1, 3)
         motion_gt = motion_target.clone()
         motion_pred = motion_pred.reshape(b, n, -1, 3)
         motion_pred = motion_pred.detach().cpu()
@@ -156,22 +173,29 @@ def data_to_viz(model, pbar, num_samples, n_viz):
 
         data_pred = torch.squeeze(motion_pred, 0).cpu().data.numpy() # in meters
         data_gt = torch.squeeze(motion_target, 0).cpu().data.numpy()
+        ree_data = torch.squeeze(ree_motion_target, 0).cpu().data.numpy()
+
 
         i = random.randint(1, b)
 
         data_pred = data_pred[i]
         data_gt = data_gt[i]
+        ree_data = ree_data[i]
         print(data_gt.shape)
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        ax.view_init(elev=20, azim=-40)
+        ax.view_init(elev=20, azim=70)
         vals = np.zeros((9, 3))  # or joints_to_consider
+        ree_vals = np.zeros(3)
         gt_plots = []
         pred_plots = []
+        ree_plots = []
 
         gt_plots = create_pose(ax, gt_plots, vals, pred=False, update=False)
         pred_plots = create_pose(ax, pred_plots, vals, pred=True, update=False)
+        ree_plot = create_ree(ax, ree_plots, ree_vals)
+
 
         ax.set_xlabel("x")
         ax.set_ylabel("y")
@@ -190,7 +214,7 @@ def data_to_viz(model, pbar, num_samples, n_viz):
         ax.set_title('mean loss in mm is: ' + str(round(mpjpe_p3d_h36[-1].item(), 4)) + ' for action : ' + str(config.actions_to_load) + ' for ' + str(
             25) + ' frames')
 
-        line_anim = animation.FuncAnimation(fig, update, 25, fargs=(data_gt, data_pred, gt_plots, pred_plots,
+        line_anim = animation.FuncAnimation(fig, update, 25, fargs=(data_gt, data_pred, ree_data, gt_plots, pred_plots, ree_plot,
                                                                           fig, ax), interval=70, blit=False)
         plt.show()
 
@@ -216,11 +240,13 @@ def set_root(data_gt):
     xroot, yroot, zroot = gt_vals[0, 0], gt_vals[0, 1], gt_vals[0, 2]
     return xroot, yroot, zroot
 
-def update(num, data_gt, data_pred, plots_gt, plots_pred, fig, ax):
+def update(num, data_gt, data_pred, ree_data ,plots_gt, plots_pred,ree_plot,fig, ax):
     gt_vals = data_gt[num]
     pred_vals = data_pred[num]
+    ree_vals = ree_data[num]
     plots_gt = create_pose(ax, plots_gt, gt_vals, pred=False, update=True)
     plots_pred = create_pose(ax, plots_pred, pred_vals, pred=True, update=True)
+    ree_plot = create_ree(ax,ree_plot,ree_vals)
 
     r = 1
     xroot, yroot, zroot = set_root(data_gt)
@@ -231,7 +257,7 @@ def update(num, data_gt, data_pred, plots_gt, plots_pred, fig, ax):
     # ax.set_title('pose at time frame: '+str(num))
     # ax.set_aspect('equal')
 
-    return plots_gt, plots_pred
+    return plots_gt, plots_pred, ree_plot
 
 
 # %%
