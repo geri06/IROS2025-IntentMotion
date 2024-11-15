@@ -5,6 +5,8 @@ import math
 import numpy as np
 import copy
 
+from fontTools.misc.bezierTools import epsilon
+
 from config import config
 from model import siMLPe as Model
 from datasets.handover import HandoverDataset
@@ -94,7 +96,7 @@ def gen_velocity(m):
     dm = m[:, 1:] - m[:, :-1]
     return dm
 
-def train_step(handover_motion_input, handover_motion_target, model, optimizer, nb_iter, total_iter, max_lr, min_lr) :
+def train_step(handover_motion_input, handover_motion_target, ree_motion_input, ree_motion_target, model, optimizer, nb_iter, total_iter, max_lr, min_lr) :
     """
     Do the prediction, compute loss and update params
     """
@@ -104,12 +106,18 @@ def train_step(handover_motion_input, handover_motion_target, model, optimizer, 
         handover_motion_input_ = handover_motion_input.clone()
         # Transforms input data into dct (load handover_motion_input_ to cuda with dct_m which was prev loaded)
         handover_motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length], handover_motion_input_.cuda())
+        if config.motion_ree.ree_cond:
+            ree_motion_input_ = ree_motion_input.clone()
+            ree_motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length],
+                                                  ree_motion_input_.cuda())
+        else:
+            ree_motion_input_ = torch.empty(0) # empty tensor
     else:
         # Remain equal since deriv_input == False
         handover_motion_input_ = handover_motion_input.clone()
-
+        ree_motion_input_ = ree_motion_input.clone()
     # Load DCT transformed data to GPU and model predicts
-    motion_pred = model(handover_motion_input_.cuda())
+    motion_pred = model(handover_motion_input_.cuda(),ree_motion_input_.cuda())
     # Do the inverse dct_m of the output (output and idct_m were already in GPU)
     motion_pred = torch.matmul(idct_m[:, :config.motion.handover_input_length, :], motion_pred)
 
@@ -146,6 +154,24 @@ def train_step(handover_motion_input, handover_motion_target, model, optimizer, 
     else:
         # again mean? unnecessary i think
         loss = loss.mean()
+
+    if config.use_rh_loss:
+        # Compute L2 between only Right Hand to see if adding more weight predictions improve
+        motion_pred = motion_pred.reshape(b, n, 9, 3)
+        motion_gt = handover_motion_target.reshape(b, n, 9, 3)
+        right_hand_gt = motion_gt[:, :, 5, :]
+        right_hand_pred = motion_pred[:, :, 5, :]
+        rhloss = torch.mean(torch.mean(torch.norm(right_hand_pred - right_hand_gt, dim=2), dim=1), dim = 0)
+        loss = loss + rhloss
+
+    if config.use_ree_loss:
+        # Compute L2 between only Right Hand to see if adding more weight predictions improve
+        motion_pred = motion_pred.reshape(b, n, 9, 3)
+        right_hand_pred_last_frame = motion_pred[:, config.motion.handover_target_length_train-1, 5, :]
+        ree_target = ree_motion_target[:, config.motion.handover_target_length_train-1, :]
+        reeloss = torch.mean(torch.norm(right_hand_pred_last_frame - ree_target.cuda(), 1, 0))
+        loss = loss + 0.001*reeloss
+
 
     # Save loss value to be able to visualize in tensorboard
     writer.add_scalar('Loss/angle', loss.detach().cpu().numpy(), nb_iter)
@@ -232,10 +258,10 @@ avg_lr = 0.
 # until max num iters
 while (nb_iter + 1) < config.total_iters:
     # iterates over batches of data from the dataloder
-    for (handover_motion_input, handover_motion_target) in dataloader:
+    for (handover_motion_input, handover_motion_target,ree_motion_input,ree_motion_target) in dataloader:
 
         # compute the train step and save loss, lr and opt
-        loss, optimizer, current_lr = train_step(handover_motion_input, handover_motion_target, model, optimizer, nb_iter, config.cos_lr_total_iters, config.cos_lr_max, config.cos_lr_min)
+        loss, optimizer, current_lr = train_step(handover_motion_input, handover_motion_target, ree_motion_input,ree_motion_target ,model, optimizer, nb_iter, config.cos_lr_total_iters, config.cos_lr_max, config.cos_lr_min)
         # save avg loss and lr to add it to the log file
         avg_loss += loss
         avg_lr += current_lr
@@ -253,12 +279,15 @@ while (nb_iter + 1) < config.total_iters:
         if (nb_iter + 1) % config.eval_every == 0 :
             model.eval()
             # calc loss in all timeframes
-            acc_tmp, rh_loss = test(eval_config, model, eval_dataloader)
+            acc_tmp, rh_loss, under_10, under_20, under_30 = test(eval_config, model, eval_dataloader)
             avg_rh_loss = np.mean(np.array(rh_loss))
             avg_l2_body_loss = np.mean(np.array(acc_tmp))  # mean of all time frames
             print("Iteration:",nb_iter)
             print("L2_body test", round(avg_l2_body_loss,3))
             print("L2_right_hand test", round(avg_rh_loss,3))
+            print("% Under 10", round(under_10, 3))
+            print("% Under 20", round(under_20, 3))
+            print("% Under 30", round(under_30,3))
             writer.add_scalar('Body Test Loss', avg_l2_body_loss, nb_iter)
             print_and_log_info(logger, f"\t Body Test loss: {avg_l2_body_loss}")
             writer.add_scalar('RH Test Loss', avg_rh_loss, nb_iter)
@@ -274,7 +303,7 @@ while (nb_iter + 1) < config.total_iters:
             # eval model
             model.eval()
             # calc loss
-            acc_tmp, rh_loss = test(eval_config, model, eval_dataloader)
+            acc_tmp, rh_loss,_,_,_ = test(eval_config, model, eval_dataloader)
             print("Body loss values", acc_tmp)
             print("RH loss values", rh_loss)
             acc_log.write(''.join(str(nb_iter + 1) + '\n'))

@@ -59,6 +59,8 @@ C.deriv_input = True
 # Apply an offset correction to output
 C.deriv_output = True
 C.use_relative_loss = True
+C.use_rh_loss = True
+C.use_ree_loss = False
 
 """ Model Config"""
 ## Network
@@ -111,6 +113,15 @@ C.motion_gcn_out.do = 0
 C.motion_gcn_out.num_stage = 0
 C.motion_gcn_out.gcn_out = False
 
+# Motion Network REE
+C.motion_ree = edict()
+C.motion_ree.input_dim = 3
+C.motion_ree.ree_cond = True
+C.motion_ree.ree_concatenation = False
+C.motion_ree.ree_sum = True
+C.motion_ree.embedding_size = 27 # set to 27 in case ree_sum is True
+
+
 """Train Config"""
 C.batch_size = 256
 C.num_workers = 6
@@ -131,7 +142,7 @@ C.actions_to_load = "all" # add actions between brackets: ["walking", "smoking"]
 
 """Display Config"""
 C.print_every = 250
-C.save_every = 5000
+C.save_every = 2500
 C.viz_GCN_folder = C.motion_gcn_out.gcn_out
 
 if __name__ == '__main__':

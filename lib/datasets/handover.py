@@ -44,7 +44,13 @@ class HandoverDataset(data.Dataset):
              # 88, 89, 90,    #right_thumb
              92, 93, 94,  # left_hip (21, 22, 23)
              96, 97, 98]  # right_hip (24, 25, 26)
-        ).astype(np.int64)
+        ).astype(int)
+
+        self.end_effector_dims = np.array([132, 133, 134]).astype(int)
+        self.ree_cond = config.motion_ree.ree_cond
+
+        # Define used joints in case context is used
+        self._points_to_load = np.concatenate((self.used_joint_indexes,self.end_effector_dims))
 
         self._scenarios = ["straight", "one_obstacle", "multiple_obstacles"]
 
@@ -72,10 +78,6 @@ class HandoverDataset(data.Dataset):
             seq_names += np.loadtxt(
                 os.path.join(self._handover_anno_dir.replace('handover', ''), "handover_train.txt"), dtype=str
             ).tolist()
-        else:
-            seq_names += open(
-                os.path.join(self._handover_anno_dir.replace('handover', ''), "handover_test.txt"), 'r'
-            ).readlines()
 
         # save paths of Subjects (SNum) and diverse actions into a list
         file_list = []
@@ -95,7 +97,7 @@ class HandoverDataset(data.Dataset):
             for line in info:
                 line = line.strip().split(',')
                 if len(line) > 0:
-                    line = np.array(line)[self.used_joint_indexes.astype(int)]
+                    line = np.array(line)[self._points_to_load.astype(int)]
                     the_sequence.append(np.array([float(x) for x in line]))
             # pose_info is a list of np arrays
             the_sequence = np.array(the_sequence)
@@ -149,7 +151,19 @@ class HandoverDataset(data.Dataset):
         idx, start_frame = self.data_idx[index]
         frame_indexes = np.arange(start_frame, start_frame + self.handover_motion_input_length + self.handover_motion_target_length)
         # seqs correspondant to frame indexes shape (50+10, 9*3)
-        motion = self.handover_seqs[idx][frame_indexes]
+        # define motion and ree input separetly
+        all_motion = self.handover_seqs[idx][frame_indexes]
+
+        ree_idx = [27, 28, 29]
+        ree_motion = all_motion[:, ree_idx]  # canviar per self.ree coordinates de config
+        # set input to provide training data and target to compute loss
+        ree_motion_input = ree_motion[:self.handover_motion_input_length]
+        ree_motion_target  = ree_motion[self.handover_motion_input_length:]
+        # change to float
+        ree_motion_input = ree_motion_input.float()
+        ree_motion_target = ree_motion_target.float()
+
+        motion = all_motion[:,:27]  # select only motion input data
         if self.data_aug:
             # random to apply data aug
             if torch.rand(1)[0] > .5:
@@ -161,13 +175,14 @@ class HandoverDataset(data.Dataset):
         # define input and target of motion
         handover_motion_input = motion[:self.handover_motion_input_length] # meter
         handover_motion_target = motion[self.handover_motion_input_length:]  # meter
-
         # change to float
         handover_motion_input = handover_motion_input.float()
         handover_motion_target = handover_motion_target.float()
-        return handover_motion_input, handover_motion_target
+
+        return handover_motion_input, handover_motion_target, ree_motion_input, ree_motion_target
 
 if __name__ == "__main__":
     config.motion.handover_target_length = config.motion.handover_target_length_train
     dataset = HandoverDataset(config, 'train', config.data_aug)
-    input, target = dataset[5]
+    motion_input, motion_target, ree_input, ree_target = dataset[5]
+    #print(motion_input.shape, motion_target.shape, ree_input.shape, ree_target.shape)
