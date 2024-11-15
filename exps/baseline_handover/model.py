@@ -51,11 +51,11 @@ class siMLPe(nn.Module):
 
         # initialize ree networks
         if self.ree_cond:
-            self.motion_ree = nn.Linear(self.config.motion_ree.input_dim, self.config.motion_ree.output_dim)
+            self.motion_ree = nn.Linear(self.config.motion_ree.input_dim, self.config.motion_ree.embedding_size)
 
-            # initialize network to reduce dim of ree and motion input concatenation (from 30 to 27)
+            # initialize network to reduce dim of ree and motion input concatenation (from N to 27)
             if self.ree_concatenation:
-                self.motion_context = nn.Linear(self.config.motion_ree.input_dim + self.config.motion.dim, self.config.motion.dim) # TODO: check dimensions
+                self.motion_context = nn.Linear(self.config.motion_ree.embedding_size + self.config.motion.dim, self.config.motion.dim)
 
     def reset_parameters(self):
         """
@@ -64,12 +64,7 @@ class siMLPe(nn.Module):
         nn.init.xavier_uniform_(self.motion_fc_out.weight, gain=1e-8)
         nn.init.constant_(self.motion_fc_out.bias, 0)
 
-    def forward(self, motion_input):
-
-        # define motion and ree input separetly
-        ree_input = motion_input[27,28,29] # canviar per self.ree coordinates de config
-        motion_input = motion_input[:-3] # select only motion input data
-
+    def forward(self, motion_input, ree_input):
         # process motion input without context with Linear after dct transform
         if self.temporal_fc_in:
             # transpose d and n dims to actuate on temporal dim
@@ -86,14 +81,17 @@ class siMLPe(nn.Module):
         # If we want to add ree context process it through motion_ree layer and concat
         if self.ree_cond:
             ree_feats = self.motion_ree(ree_input)
-            ree_feats = self.arr0(ree_feats)
+            motion_feats = self.arr1(motion_feats)
+            # ree_feats = self.arr0(ree_feats)
 
             if self.ree_concatenation:
-                context_feats = torch.cat((motion_feats, ree_feats), dim=-1)  # TODO: check that dimensions are okay
+                context_feats = torch.cat((motion_feats, ree_feats), dim=2)
                 motion_feats = self.motion_context(context_feats)
+                motion_feats = self.arr0(motion_feats)
             else:
                 # add context by adding values to motion input with dim 27
                 motion_feats += ree_feats
+                motion_feats = self.arr0(motion_feats)
 
         # compute motion_feats with motion mlp (42 layers of MLP + LN)
         motion_feats = self.motion_mlp(motion_feats)
@@ -108,7 +106,6 @@ class siMLPe(nn.Module):
         else:
             motion_feats = self.arr1(motion_feats)
             motion_feats = self.motion_fc_out(motion_feats)
-
 
         return motion_feats
 
