@@ -59,8 +59,11 @@ C.deriv_input = True
 # Apply an offset correction to output
 C.deriv_output = True
 C.use_relative_loss = True
-C.use_rh_loss = True
-C.use_ree_loss = False
+C.use_rh_loss = False
+C.use_ree_loss = True
+
+## Loss layer
+C.use_loss_layer = False
 
 """ Model Config"""
 ## Network

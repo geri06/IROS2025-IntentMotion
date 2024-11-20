@@ -41,6 +41,7 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
     """
     under_30 = []
     under_20 = []
+    under_15 = []
     under_10 = []
     for (motion_input, motion_target, ree_motion_input, ree_motion_target) in pbar:
         motion_input = motion_input.cuda()
@@ -103,8 +104,9 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
         # Compute % of predicted joints under 0.2m
         metrics = quality_metrics(motion_gt, motion_pred)
         under_10.append(metrics[0])
-        under_20.append(metrics[1])
-        under_30.append(metrics[2])
+        under_15.append(metrics[1])
+        under_20.append(metrics[2])
+        under_30.append(metrics[3])
 
         # accumulate loss for each batch of data
         m_p3d_handover += mpjpe_p3d_handover.cpu().numpy()
@@ -113,10 +115,11 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
     # compute mean loss diving by the total number of batches giving the mean loss error per timestep
     m_p3d_handover = m_p3d_handover / num_samples
     u10 = np.array(under_10).mean() * 100
+    u15 = np.array(under_15).mean() * 100
     u20 = np.array(under_20).mean() * 100
     u30 = np.array(under_30).mean()*100
     right_hand_loss = right_hand_loss / num_samples
-    return m_p3d_handover, right_hand_loss, u10, u20, u30
+    return m_p3d_handover, right_hand_loss, u10, u15, u20, u30
 
 def test(config, model, dataloader) :
 
@@ -126,13 +129,13 @@ def test(config, model, dataloader) :
     num_samples = 0
 
     pbar = dataloader
-    m_p3d_handover, right_hand_loss, under_10, under_20, under_30  = regress_pred(model, pbar, num_samples, m_p3d_handover,right_hand_loss)
+    m_p3d_handover, right_hand_loss, under_10, under_15, under_20, under_30  = regress_pred(model, pbar, num_samples, m_p3d_handover,right_hand_loss)
 
     # This returns a dictionary with the correspondant loss to each time frame in results time frames
     ret = {}
     for j in range(config.motion.handover_target_length):
         ret["#{:d}".format(titles[j])] = [m_p3d_handover[j], m_p3d_handover[j]]
-    return [round(ret[key][0], 2) for key in results_keys], right_hand_loss, under_10, under_20, under_30
+    return [round(ret[key][0], 2) for key in results_keys], right_hand_loss, under_10, under_15, under_20, under_30
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
