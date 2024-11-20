@@ -163,7 +163,7 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
         right_hand_pred_last_frame = motion_pred[:, config.motion.handover_target_length_train-1, 5, :]
         ree_target = ree_motion_target[:, config.motion.handover_target_length_train-1, :]
         reeloss = torch.mean(torch.norm(right_hand_pred_last_frame - ree_target.cuda(), 1, 0))
-        loss = loss + 0.001*reeloss
+        loss = loss + 0.02*reeloss
 
 
     # Save loss value to be able to visualize in tensorboard
@@ -214,7 +214,7 @@ def subject_splits():
 
 
 ### ------------ Training with cross validation ------------- ###
-metrics = {"L2_body": [], "L2_right_hand":[], "under_0.10m":[], "under_0.20m":[], "under_0.30m":[]}
+metrics = {"L2_body": [], "L2_right_hand":[], "under_0.10m":[], "under_0.15m":[],"under_0.20m":[], "under_0.30m":[]}
 
 # crete logger and stuff to add log files with config and info
 
@@ -317,13 +317,14 @@ for split in splits:
             if (nb_iter + 1) % config.eval_every == 0:
                 model.eval()
                 # calc loss in all timeframes
-                acc_tmp, rh_loss, under_10, under_20, under_30 = test(eval_config, model, eval_dataloader)
+                acc_tmp, rh_loss, under_10, under_15, under_20, under_30 = test(eval_config, model, eval_dataloader)
                 avg_rh_loss = np.mean(np.array(rh_loss))
                 avg_l2_body_loss = np.mean(np.array(acc_tmp))  # mean of all time frames
                 print("Iteration:", nb_iter)
                 print("L2_body test", round(avg_l2_body_loss, 3))
                 print("L2_right_hand test", round(avg_rh_loss, 3))
                 print("% Under 10", round(under_10, 3))
+                print("% Under 15", round(under_15, 3))
                 print("% Under 20", round(under_20, 3))
                 print("% Under 30", round(under_30, 3))
                 writer.add_scalar('Body Test Loss', avg_l2_body_loss, nb_iter)
@@ -341,7 +342,7 @@ for split in splits:
                 # eval model
                 model.eval()
                 # calc loss
-                acc_tmp, rh_loss, under_10, under_20, under_30 = test(eval_config, model, eval_dataloader)
+                acc_tmp, rh_loss, under_10, under_15, under_20, under_30 = test(eval_config, model, eval_dataloader)
                 print("Body loss values", acc_tmp)
                 print("RH loss values", rh_loss)
                 acc_log.write(''.join(str(nb_iter + 1) + '\n'))
@@ -363,6 +364,7 @@ for split in splits:
                 metrics["L2_body"].append(np.mean(np.array(acc_tmp)))
                 metrics["L2_right_hand"].append(np.mean(np.array(rh_loss)))
                 metrics["under_0.10m"].append(under_10)
+                metrics["under_0.15m"].append(under_15)
                 metrics["under_0.20m"].append(under_20)
                 metrics["under_0.30m"].append(under_30)
                 break
@@ -373,6 +375,7 @@ for split in splits:
 print_and_log_info(logger, "Mean L2_body is {}".format(sum(metrics["L2_body"])/len(metrics["L2_body"])))
 print_and_log_info(logger, "Mean L2_right_hand is {}".format(sum(metrics["L2_right_hand"])/len(metrics["L2_right_hand"])))
 print_and_log_info(logger, "Under 0.10 is {}".format(sum(metrics["under_0.10m"])/len(metrics["under_0.10m"])))
+print_and_log_info(logger, "Under 0.15 is {}".format(sum(metrics["under_0.15m"])/len(metrics["under_0.15m"])))
 print_and_log_info(logger, "Under 0.20 is {}".format(sum(metrics["under_0.20m"])/len(metrics["under_0.20m"])))
 print_and_log_info(logger, "Under 0.30 is {}".format(sum(metrics["under_0.30m"])/len(metrics["under_0.30m"])))
 

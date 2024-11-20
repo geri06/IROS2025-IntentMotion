@@ -176,7 +176,7 @@ def data_to_viz(model, pbar, num_samples, n_viz):
         ree_data = torch.squeeze(ree_motion_target, 0).cpu().data.numpy()
 
 
-        i = random.randint(1, b)
+        i = random.randint(1, b-1)
 
         data_pred = data_pred[i]
         data_gt = data_gt[i]
