@@ -168,7 +168,7 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
         ree_target = ree_motion_target[:, config.motion.handover_target_length_train-1, :]
         reeloss = torch.mean(torch.norm(right_hand_pred_last_frame - ree_target.cuda(), dim = 1), dim = 0)
         extra_loss = reeloss
-        total_loss += 0.015 * reeloss
+        total_loss += 0.01 * reeloss
 
     if config.use_loss_layer:
         total_loss, weight = weighted_loss_layer(loss,extra_loss)

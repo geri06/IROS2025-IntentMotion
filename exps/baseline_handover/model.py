@@ -26,6 +26,7 @@ class siMLPe(nn.Module):
         # Add REE conditioning
         self.ree_cond = config.motion_ree.ree_cond
         self.ree_concatenation = config.motion_ree.ree_concatenation
+        self.GCN_concatenation = config.motion_ree.gcn_concatenation
 
 
         if self.temporal_fc_in:
@@ -55,7 +56,12 @@ class siMLPe(nn.Module):
 
             # initialize network to reduce dim of ree and motion input concatenation (from N to 27)
             if self.ree_concatenation:
-                self.motion_context = nn.Linear(self.config.motion_ree.embedding_size + self.config.motion.dim, self.config.motion.dim)
+                if self.GCN_concatenation:
+                    self.motion_context = GCN(self.config.motion_ree.embedding_size + self.config.motion.dim, self.config.motion.dim,
+                        self.config.motion_ree.gcn_do, self.config.motion_ree.gcn_num_stage,
+                        self.config.motion_ree.gcn_n_node)
+                else:
+                    self.motion_context = nn.Linear(self.config.motion_ree.embedding_size + self.config.motion.dim, self.config.motion.dim)
 
     def reset_parameters(self):
         """
