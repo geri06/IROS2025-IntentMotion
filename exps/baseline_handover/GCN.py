@@ -126,5 +126,5 @@ class GCN(nn.Module):
         y = self.gc7(y)
         """
         if is_out_resi:
-            y = y + x
+            y = y + x[:,:,:27] # do the residual only with body data
         return y
