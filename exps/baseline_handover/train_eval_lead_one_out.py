@@ -88,6 +88,14 @@ def gen_velocity(m):
     dm = m[:, 1:] - m[:, :-1]
     return dm
 
+def gen_rh_distance_to_joints(motion):
+    b,c,n,_ = motion.shape
+    rh_motion = motion[:,:,5,:] # select rh joint
+    rh_motion = rh_motion.unsqueeze(dim = 2)
+    rh_motion_expanded = rh_motion.expand(-1, -1, n, -1)  # Shape: [256, 10, 9, 3]
+    dist_tensor = torch.norm(motion - rh_motion_expanded, dim = 3)
+    return dist_tensor
+
 def train_step(handover_motion_input, handover_motion_target, ree_motion_input, ree_motion_target, model, optimizer, nb_iter, total_iter, max_lr, min_lr) :
     """
     Do the prediction, compute loss and update params
@@ -144,6 +152,10 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
         dloss = torch.mean(torch.norm((dmotion_pred - dmotion_gt).reshape(-1,3), 2, 1))
         # Add losses
         loss = loss + dloss
+        if config.use_relative_loss_rh:
+            # focus to improve right hand velocity
+            dloss_rh = torch.mean(torch.norm((dmotion_pred[:,:,[5],:] - dmotion_gt[:,:,[5],:]).reshape(-1,3), 2, 1))
+            loss += 0.1*dloss_rh
     else:
         # again mean? unnecessary i think
         loss = loss.mean()
@@ -160,10 +172,20 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
     if config.use_ree_loss:
         # Compute L2 between only Right Hand to see if adding more weight predictions improve
         motion_pred = motion_pred.reshape(b, n, 9, 3)
-        right_hand_pred_last_frame = motion_pred[:, config.motion.handover_target_length_train-1, 5, :]
-        ree_target = ree_motion_target[:, config.motion.handover_target_length_train-1, :]
-        reeloss = torch.mean(torch.norm(right_hand_pred_last_frame - ree_target.cuda(), 1, 0))
-        loss = loss + 0.02*reeloss
+        right_hand_pred_last_frame = motion_pred[:, config.motion.handover_target_length_train - 1, 5, :]
+        ree_target = ree_motion_target[:, config.motion.handover_target_length_train - 1, :]
+        reeloss = torch.mean(torch.norm(right_hand_pred_last_frame - ree_target.cuda(), dim=1), dim=0)
+        if config.use_rh_distance_joints_loss:
+            # Compute L2 between the correct mean distance from RH to other joints and the predicted distance
+            # Calcular distancia de RH als altres joints a pred i gt, fer una funció que ho faci.
+            motion_gt = handover_motion_target.reshape(b, n, 9, 3)
+            pred_dist = gen_rh_distance_to_joints(motion_pred)
+            gt_dist = gen_rh_distance_to_joints(motion_gt)
+            distance_joints_loss = torch.mean(abs(gt_dist-pred_dist),dim= [0,1,2])
+            extra_loss = reeloss + distance_joints_loss
+            loss += 0.05*reeloss + distance_joints_loss
+        else:
+            loss += 0.01 * reeloss
 
 
     # Save loss value to be able to visualize in tensorboard
