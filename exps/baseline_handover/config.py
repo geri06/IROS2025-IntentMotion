@@ -59,7 +59,7 @@ C.deriv_input = True
 # Apply an offset correction to output
 C.deriv_output = True
 C.use_relative_loss = True
-C.use_relative_loss_rh = True # not working well
+C.use_relative_loss_rh = False
 C.use_rh_loss = False
 C.use_ree_loss = True
 C.use_rh_distance_joints_loss = True
@@ -127,9 +127,15 @@ C.motion_ree.gcn_concatenation = False
 C.motion_ree.gcn_do = 0
 C.motion_ree.gcn_num_stage = 0
 C.motion_ree.gcn_n_node = C.motion.handover_input_length_dct
-C.motion_ree.ree_sum = True
+C.motion_ree.ree_sum = False
 C.motion_ree.embedding_size = 27 # set to 27 in case ree_sum is True
 
+# Motion Network Int
+C.motion_int = edict()
+C.motion_int.int_cond = True
+C.motion_int.input_dim = 1
+C.motion_int.num_emb = 5
+C.motion_int.output_dim = 27 # set to 27 in case we sum int embedding
 
 
 

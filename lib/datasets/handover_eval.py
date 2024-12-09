@@ -44,12 +44,12 @@ class HandoverEvalDataset(data.Dataset):
              92, 93, 94,  # left_hip (21, 22, 23)
              96, 97, 98]  # right_hip (24, 25, 26)
         ).astype(np.int64)
-        self.end_effector_dims = np.array([132, 133, 134]).astype(int)
-        self.ree_cond = config.motion_ree.ree_cond
+        self._end_effector_dims = np.array([132, 133, 134]).astype(int)
+        self._intention_dim = [136]
 
         # Define used joints in case context is used
 
-        self._points_to_load = np.concatenate((self.used_joint_indexes, self.end_effector_dims))
+        self._points_to_load = np.concatenate((self.used_joint_indexes, self._end_effector_dims, self._intention_dim))
 
         self._scenarios = ["straight", "one_obstacle", "multiple_obstacles"]
 
@@ -94,7 +94,8 @@ class HandoverEvalDataset(data.Dataset):
             # for each line split by space and define each value as a float
             for line in info:
                 line = line.strip().split(',')
-                if len(line) > 0:
+                # load only data with intention label
+                if len(line) == 137:
                     line = np.array(line)[self._points_to_load.astype(int)]
                     the_sequence.append(np.array([float(x) for x in line]))
             # pose_info is a list of np arrays
@@ -106,7 +107,6 @@ class HandoverEvalDataset(data.Dataset):
                 T = len(sampled_index)
                 the_sequence = np.array(the_sequence[sampled_index, :])
                 xyz_info = torch.from_numpy(the_sequence).float()
-                xyz_info = xyz_info.reshape(T, -1, 3)
                 handover_files.append(xyz_info)
         print("Number of files for evaluation:", len(handover_files), handover_files[0].shape)
         return handover_files
@@ -153,6 +153,7 @@ class HandoverEvalDataset(data.Dataset):
         # define motion and ree input separetly
         all_motion = self.handover_seqs[idx][frame_indexes]
 
+        # Ree data
         ree_idx = [27, 28, 29]
         ree_motion = all_motion[:, ree_idx]  # canviar per self.ree coordinates de config
         # set input to provide training data and target to compute loss
@@ -161,6 +162,14 @@ class HandoverEvalDataset(data.Dataset):
         # change to float
         ree_motion_input = ree_motion_input.float()
         ree_motion_target = ree_motion_target.float()
+
+        # Intention data
+        int_idx = [30]
+        int_motion = all_motion[:, int_idx]  # canviar per self.int_idx coordinates de config
+        int_motion_input = int_motion[:self.handover_motion_input_length]
+        int_motion_target = int_motion[self.handover_motion_input_length:]
+        int_motion_input = int_motion_input.float()
+        int_motion_target = int_motion_target.float()
 
         motion = all_motion[:, :27]  # select only motion input data
 
@@ -171,12 +180,12 @@ class HandoverEvalDataset(data.Dataset):
         # change to float
         handover_motion_input = handover_motion_input.float()
         handover_motion_target = handover_motion_target.float()
-        return handover_motion_input, handover_motion_target, ree_motion_input, ree_motion_target
+        return handover_motion_input, handover_motion_target, ree_motion_input, ree_motion_target, int_motion_input, int_motion_target
 
 
 if __name__ == "__main__":
     config.motion.handover_target_length = config.motion.handover_target_length_eval
     dataset = HandoverEvalDataset(config, 'test')
-    motion_input, motion_target, ree_input, ree_target = dataset[5]
+    motion_input, motion_target, ree_input, ree_target, int_input, int_target= dataset[5]
 
-#    print(motion_input.shape, motion_target.shape, ree_input.shape, ree_target.shape)
+    print(motion_input.shape, motion_target.shape, ree_input.shape, ree_target.shape,int_input.shape, int_target.shape)

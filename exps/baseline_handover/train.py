@@ -105,7 +105,30 @@ def gen_rh_distance_to_joints(motion):
     return dist_tensor
 
 
-def train_step(handover_motion_input, handover_motion_target, ree_motion_input, ree_motion_target, model, optimizer, weighted_loss_layer,nb_iter, total_iter, max_lr, min_lr) :
+def filter_collaboration_samples(int_motion):
+    """
+    Function created to select only samples where the subject collaborates.
+    This will be used to calculate ree_loss and rh_joint_dist.
+
+    Args:
+    int_motion (torch.Tensor): A tensor of shape [batch_size, 50, 1] representing intention associated to motion data.
+
+    Returns:
+    List[int]: A list of batch indexes where all 50 values in dim 1 are equal to 0.
+    """
+    batch_collaborative_indexes = []
+
+    # Check each batch in the tensor
+    for batch_idx in range(int_motion.shape[0]):
+        # Extract the slice corresponding to this batch and reshape to [50]
+        batch_data = int_motion[batch_idx, :, 0]
+
+        # Check if all values in this slice are equal to 0.0
+        if torch.all(batch_data == 0):
+            batch_collaborative_indexes.append(batch_idx)
+    return batch_collaborative_indexes
+
+def train_step(handover_motion_input, handover_motion_target, ree_motion_input, ree_motion_target, int_motion_input, int_motion_target, model, optimizer, weighted_loss_layer,nb_iter, total_iter, max_lr, min_lr) :
     """
     Do the prediction, compute loss and update params
     """
@@ -121,12 +144,18 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
                                                   ree_motion_input_.cuda())
         else:
             ree_motion_input_ = torch.empty(0) # empty tensor
+
+        if config.motion_int.int_cond:
+            int_motion_input_ = int_motion_input.clone()
+            int_motion_input_ = int_motion_input_.reshape(-1, config.motion.handover_input_length)
+        else:
+            int_motion_input_ = torch.empty(0)
     else:
         # Remain equal since deriv_input == False
         handover_motion_input_ = handover_motion_input.clone()
         ree_motion_input_ = ree_motion_input.clone()
     # Load DCT transformed data to GPU and model predicts
-    motion_pred = model(handover_motion_input_.cuda(),ree_motion_input_.cuda())
+    motion_pred = model(handover_motion_input_.cuda(),ree_motion_input_.cuda(),int_motion_input_.cuda())
     # Do the inverse dct_m of the output (output and idct_m were already in GPU)
     motion_pred = torch.matmul(idct_m[:, :config.motion.handover_input_length, :], motion_pred)
 
@@ -163,7 +192,7 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
         if config.use_relative_loss_rh:
             # focus to improve right hand velocity
             dloss_rh = torch.mean(torch.norm((dmotion_pred[:,:,[5],:] - dmotion_gt[:,:,[5],:]).reshape(-1,3), 2, 1))
-            total_loss += 0.1*dloss_rh
+            total_loss += 0.5*dloss_rh
 
     if config.use_rh_loss:
         # Compute L2 between only Right Hand to see if adding more weight predictions improve
@@ -176,20 +205,29 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
 
 
     if config.use_ree_loss:
+        # filter out collaborative samples to compute ree_loss and use_rh_distance_joints_loss
+        collaboration_samples = filter_collaboration_samples(int_motion_input)
         # Compute L2 between only Right Hand to see if adding more weight predictions improve
         motion_pred = motion_pred.reshape(b, n, 9, 3)
-        right_hand_pred_last_frame = motion_pred[:, config.motion.handover_target_length_train-1, 5, :]
-        ree_target = ree_motion_target[:, config.motion.handover_target_length_train-1, :]
+        motion_pred_collab = motion_pred[collaboration_samples,:,:,:]
+        right_hand_pred_last_frame = motion_pred_collab[:, config.motion.handover_target_length_train-1, 5, :]
+        ree_target = ree_motion_target[collaboration_samples, config.motion.handover_target_length_train-1, :]
+        #print("MOTION PRED COLAB SHAPE", motion_pred_collab.shape)
+        #print("right_hand_pred_last_frame:", right_hand_pred_last_frame.shape)
+        #print("ree_target:",ree_target.shape)
         reeloss = torch.mean(torch.norm(right_hand_pred_last_frame - ree_target.cuda(), dim = 1), dim = 0)
         if config.use_rh_distance_joints_loss:
             # Compute L2 between the correct mean distance from RH to other joints and the predicted distance
             # Calcular distancia de RH als altres joints a pred i gt, fer una funció que ho faci.
             motion_gt = handover_motion_target.reshape(b, n, 9, 3)
-            pred_dist = gen_rh_distance_to_joints(motion_pred)
-            gt_dist = gen_rh_distance_to_joints(motion_gt)
+            motion_gt_collab = motion_gt[collaboration_samples,:,:,:]
+            #print("MOTION GT COLAB SHAPE", motion_gt_collab.shape)
+            pred_dist = gen_rh_distance_to_joints(motion_pred_collab)
+            gt_dist = gen_rh_distance_to_joints(motion_gt_collab)
+            #print("PRED AND GT DIST", pred_dist.shape, gt_dist.shape)
             distance_joints_loss = torch.mean(abs(gt_dist-pred_dist),dim= [0,1,2])
             extra_loss = reeloss + distance_joints_loss
-            total_loss += 0.05*reeloss + distance_joints_loss
+            total_loss += 0.01*reeloss + 0.5*distance_joints_loss
         else:
             total_loss += 0.01 * reeloss
             extra_loss = reeloss
@@ -291,10 +329,10 @@ avg_lr = 0.
 # until max num iters
 while (nb_iter + 1) < config.total_iters:
     # iterates over batches of data from the dataloder
-    for (handover_motion_input, handover_motion_target,ree_motion_input,ree_motion_target) in dataloader:
+    for (handover_motion_input, handover_motion_target,ree_motion_input,ree_motion_target, int_motion_input, int_motion_target) in dataloader:
 
         # compute the train step and save loss, lr and opt
-        loss, optimizer, current_lr = train_step(handover_motion_input, handover_motion_target, ree_motion_input,ree_motion_target ,model, optimizer, weighted_loss_layer,nb_iter, config.cos_lr_total_iters, config.cos_lr_max, config.cos_lr_min)
+        loss, optimizer, current_lr = train_step(handover_motion_input, handover_motion_target, ree_motion_input,ree_motion_target, int_motion_input, int_motion_target ,model, optimizer, weighted_loss_layer,nb_iter, config.cos_lr_total_iters, config.cos_lr_max, config.cos_lr_min)
         # save avg loss and lr to add it to the log file
         avg_loss += loss
         avg_lr += current_lr
