@@ -98,6 +98,19 @@ def get_dct_matrix(N):
     idct_m = np.linalg.inv(dct_m)
     return dct_m, idct_m
 
+def find_intentions_mode(x):
+    """
+    Given a tensor of shape ([256, 10]) returns the mode of each 10 intentions
+    in a tensor of shape ([256])
+    """
+    batch_intentions = []
+    for sample in range(x.shape[0]):
+        vals,counts = np.unique(x[sample,:], return_counts=True)
+        index = np.argmax(counts)
+        intention = vals[index]
+        batch_intentions.append(intention)
+    return torch.tensor(batch_intentions)
+
 # create DCT with dimensions of input lenght data (50)
 dct_m,idct_m = get_dct_matrix(config.motion.handover_input_length_dct)
 # create tensor, load GPU and add 3rd dim (1,N,N) to dct matrices
@@ -141,14 +154,15 @@ def data_to_viz(model, pbar, num_samples, n_viz):
                         ree_motion_input_ = torch.empty(0)
 
                     if config.motion_int.int_cond:
-                        int_motion_input_ = int_motion_input.clone()
-                        int_motion_input_ = int_motion_input_.reshape(-1,config.motion.handover_input_length)
+                        int_motion_prediction_ = int_motion_target.clone()
+                        # select mode of the intention detected in the next 10 future frames
+                        int_motion_prediction_ = find_intentions_mode(int_motion_prediction_)
                     else:
-                        int_motion_input_ = torch.empty(0)
+                        int_motion_prediction_ = torch.empty(0)
                 else:
                     motion_input_ = motion_input.clone()
                     ree_motion_input_ = torch.empty(0)
-                output = model(motion_input_, ree_motion_input_, int_motion_input_.cuda())
+                output = model(motion_input_, ree_motion_input_, int_motion_prediction_.cuda())
                 # transform output using idct_m for the rows of, handover_input_length. Then we slice to extract the first step frames of the result.
                 output = torch.matmul(idct_m[:, :config.motion.handover_input_length, :], output)[:, :step, :]
                 # if deriv output
@@ -220,7 +234,7 @@ def data_to_viz(model, pbar, num_samples, n_viz):
         ax.set_zlim3d([0.0, 1.5])
         ax.set_zlabel('Z')
 
-        ax.set_title('mean loss in mm is: ' + str(round(mpjpe_p3d_h36[-1].item(), 4)) + ' with intention : ' + str(sum(int_motion_input[i,:]).item()) + ' for ' + str(
+        ax.set_title('mean loss in mm is: ' + str(round(mpjpe_p3d_h36[-1].item(), 4)) + ' with intention : ' + str(int_motion_prediction_[i].item()) + ' for ' + str(
             25) + ' frames')
 
         line_anim = animation.FuncAnimation(fig, update, 25, fargs=(data_gt, data_pred, ree_data, gt_plots, pred_plots, ree_plot,

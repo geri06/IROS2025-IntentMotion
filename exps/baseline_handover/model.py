@@ -108,10 +108,9 @@ class siMLPe(nn.Module):
 
         if self.int_cond:
             int_input = int_input.int()
-            #print("Intention input",int_input.shape)
             int_feats = self.motion_int(int_input)
+            int_feats = int_feats.unsqueeze(1).repeat(1,self.config.motion.handover_input_length_dct,1)
             int_feats = self.arr1(int_feats)
-            #print("Intention feats", int_feats.shape)
             motion_feats += int_feats
 
         # compute motion_feats with motion mlp (42 layers of MLP + LN)

@@ -104,7 +104,6 @@ def gen_rh_distance_to_joints(motion):
     dist_tensor = torch.norm(motion - rh_motion_expanded, dim = 3)
     return dist_tensor
 
-
 def filter_collaboration_samples(int_motion):
     """
     Function created to select only samples where the subject collaborates.
@@ -128,6 +127,20 @@ def filter_collaboration_samples(int_motion):
             batch_collaborative_indexes.append(batch_idx)
     return batch_collaborative_indexes
 
+def find_intentions_mode(x):
+    """
+    Given a tensor of shape ([256, 10]) returns the mode of each 10 intentions
+    in a tensor of shape ([256])
+    """
+    batch_intentions = []
+    for sample in range(x.shape[0]):
+        vals,counts = np.unique(x[sample,:], return_counts=True)
+        index = np.argmax(counts)
+        intention = vals[index]
+        batch_intentions.append(intention)
+    return torch.tensor(batch_intentions)
+
+
 def train_step(handover_motion_input, handover_motion_target, ree_motion_input, ree_motion_target, int_motion_input, int_motion_target, model, optimizer, weighted_loss_layer,nb_iter, total_iter, max_lr, min_lr) :
     """
     Do the prediction, compute loss and update params
@@ -146,16 +159,18 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
             ree_motion_input_ = torch.empty(0) # empty tensor
 
         if config.motion_int.int_cond:
-            int_motion_input_ = int_motion_input.clone()
-            int_motion_input_ = int_motion_input_.reshape(-1, config.motion.handover_input_length)
+            int_motion_prediction_ = int_motion_target.clone()
+            #print(int_motion_prediction_.shape)
+            # select mode of the intention detected in the next 10 future frames
+            int_motion_prediction_ = find_intentions_mode(int_motion_prediction_)
         else:
-            int_motion_input_ = torch.empty(0)
+            int_motion_prediction_ = torch.empty(0)
     else:
         # Remain equal since deriv_input == False
         handover_motion_input_ = handover_motion_input.clone()
         ree_motion_input_ = ree_motion_input.clone()
     # Load DCT transformed data to GPU and model predicts
-    motion_pred = model(handover_motion_input_.cuda(),ree_motion_input_.cuda(),int_motion_input_.cuda())
+    motion_pred = model(handover_motion_input_.cuda(),ree_motion_input_.cuda(),int_motion_prediction_.cuda())
     # Do the inverse dct_m of the output (output and idct_m were already in GPU)
     motion_pred = torch.matmul(idct_m[:, :config.motion.handover_input_length, :], motion_pred)
 

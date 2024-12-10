@@ -14,6 +14,19 @@ from torch.utils.data import DataLoader
 
 results_keys = ['#1','#2', '#3','#4', '#5', '#6', '#7','#8', '#9','#10', '#11', '#12', '#13', '#14', '#15', '#16', '#17', '#18', '#19', '#20', '#21', '#22', '#23', '#24', '#25']
 
+def find_intentions_mode(x):
+    """
+    Given a tensor of shape ([256, 10]) returns the mode of each 10 intentions
+    in a tensor of shape ([256])
+    """
+    batch_intentions = []
+    for sample in range(x.shape[0]):
+        vals,counts = np.unique(x[sample,:], return_counts=True)
+        index = np.argmax(counts)
+        intention = vals[index]
+        batch_intentions.append(intention)
+    return torch.tensor(batch_intentions)
+
 def get_dct_matrix(N):
     """
     Compute DCT and IDCT matrix with dim NxN to transform data
@@ -71,14 +84,15 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
                         ree_motion_input_ = torch.empty(0)
 
                     if config.motion_int.int_cond:
-                        int_motion_input_ = int_motion_input.clone()
-                        int_motion_input_ = int_motion_input_.reshape(-1,config.motion.handover_input_length)
+                        int_motion_prediction_ = int_motion_target.clone()
+                        # select mode of the intention detected in the next 10 future frames
+                        int_motion_prediction_ = find_intentions_mode(int_motion_prediction_)
                     else:
-                        int_motion_input_ = torch.empty(0)
+                        int_motion_prediction_ = torch.empty(0)
                 else:
                     motion_input_ = motion_input.clone()
                     ree_motion_input_ = None
-                output = model(motion_input_,ree_motion_input_, int_motion_input_.cuda())
+                output = model(motion_input_,ree_motion_input_, int_motion_prediction_.cuda())
                 # transform output using idct_m for the rows of, handover_input_length. Then we slice to extract the first step frames of the result.
                 output = torch.matmul(idct_m[:, :config.motion.handover_input_length, :], output)[:, :step, :]
                 # if deriv output
