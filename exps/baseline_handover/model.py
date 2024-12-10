@@ -28,6 +28,9 @@ class siMLPe(nn.Module):
         self.ree_concatenation = config.motion_ree.ree_concatenation
         self.GCN_concatenation = config.motion_ree.gcn_concatenation
 
+        # Add Int conditioning
+        self.int_cond = config.motion_int.int_cond
+
 
         if self.temporal_fc_in:
             # if temporal_fc_in, Linear input and output with dimensions of dct matrix
@@ -63,6 +66,10 @@ class siMLPe(nn.Module):
                 else:
                     self.motion_context = nn.Linear(self.config.motion_ree.embedding_size + self.config.motion.dim, self.config.motion.dim)
 
+        # initialize intention network
+        if self.int_cond:
+            self.motion_int = nn.Embedding(self.config.motion_int.num_emb, self.config.motion_int.output_dim)
+
     def reset_parameters(self):
         """
         Initializes weights (xavier dist) and biases (init to 0) of fc_out
@@ -70,7 +77,7 @@ class siMLPe(nn.Module):
         nn.init.xavier_uniform_(self.motion_fc_out.weight, gain=1e-8)
         nn.init.constant_(self.motion_fc_out.bias, 0)
 
-    def forward(self, motion_input, ree_input):
+    def forward(self, motion_input, ree_input, int_input):
         # process motion input without context with Linear after dct transform
         if self.temporal_fc_in:
             # transpose d and n dims to actuate on temporal dim
@@ -98,6 +105,14 @@ class siMLPe(nn.Module):
                 # add context by adding values to motion input with dim 27
                 motion_feats += ree_feats
                 motion_feats = self.arr0(motion_feats)
+
+        if self.int_cond:
+            int_input = int_input.int()
+            #print("Intention input",int_input.shape)
+            int_feats = self.motion_int(int_input)
+            int_feats = self.arr1(int_feats)
+            #print("Intention feats", int_feats.shape)
+            motion_feats += int_feats
 
         # compute motion_feats with motion mlp (42 layers of MLP + LN)
         motion_feats = self.motion_mlp(motion_feats)

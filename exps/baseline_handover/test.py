@@ -12,7 +12,7 @@ from lib.utils.loss import L2_right_hand, L2_body, quality_metrics
 import torch
 from torch.utils.data import DataLoader
 
-results_keys = ['#2', '#4', '#8', '#10', '#14', '#18', '#22', '#25']
+results_keys = ['#1','#2', '#3','#4', '#5', '#6', '#7','#8', '#9','#10', '#11', '#12', '#13', '#14', '#15', '#16', '#17', '#18', '#19', '#20', '#21', '#22', '#23', '#24', '#25']
 
 def get_dct_matrix(N):
     """
@@ -43,7 +43,7 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
     under_20 = []
     under_15 = []
     under_10 = []
-    for (motion_input, motion_target, ree_motion_input, ree_motion_target) in pbar:
+    for (motion_input, motion_target, ree_motion_input, ree_motion_target, int_motion_input, int_motion_target) in pbar:
         motion_input = motion_input.cuda()
         b,n,c = motion_input.shape
         # num samples updated adding batch size
@@ -70,10 +70,15 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
                     else:
                         ree_motion_input_ = torch.empty(0)
 
+                    if config.motion_int.int_cond:
+                        int_motion_input_ = int_motion_input.clone()
+                        int_motion_input_ = int_motion_input_.reshape(-1,config.motion.handover_input_length)
+                    else:
+                        int_motion_input_ = torch.empty(0)
                 else:
                     motion_input_ = motion_input.clone()
                     ree_motion_input_ = None
-                output = model(motion_input_,ree_motion_input_)
+                output = model(motion_input_,ree_motion_input_, int_motion_input_.cuda())
                 # transform output using idct_m for the rows of, handover_input_length. Then we slice to extract the first step frames of the result.
                 output = torch.matmul(idct_m[:, :config.motion.handover_input_length, :], output)[:, :step, :]
                 # if deriv output

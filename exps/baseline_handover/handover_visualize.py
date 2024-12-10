@@ -109,8 +109,9 @@ def data_to_viz(model, pbar, num_samples, n_viz):
     """
     regress_pred() from test.py modified to return pred_data and gt_data
     """
-
-    for cnt, (motion_input, motion_target, ree_motion_input, ree_motion_target) in enumerate(pbar):
+    idxs = [20, 22, 23, 24, 25]
+    k=0
+    for cnt, (motion_input, motion_target, ree_motion_input, ree_motion_target,int_motion_input, int_motion_target) in enumerate(pbar):
         motion_input = motion_input.cuda()
         b, n, c = motion_input.shape
         # num samples updated adding batch size
@@ -138,10 +139,16 @@ def data_to_viz(model, pbar, num_samples, n_viz):
                                                          ree_motion_input_.cuda())
                     else:
                         ree_motion_input_ = torch.empty(0)
+
+                    if config.motion_int.int_cond:
+                        int_motion_input_ = int_motion_input.clone()
+                        int_motion_input_ = int_motion_input_.reshape(-1,config.motion.handover_input_length)
+                    else:
+                        int_motion_input_ = torch.empty(0)
                 else:
                     motion_input_ = motion_input.clone()
                     ree_motion_input_ = torch.empty(0)
-                output = model(motion_input_, ree_motion_input_)
+                output = model(motion_input_, ree_motion_input_, int_motion_input_.cuda())
                 # transform output using idct_m for the rows of, handover_input_length. Then we slice to extract the first step frames of the result.
                 output = torch.matmul(idct_m[:, :config.motion.handover_input_length, :], output)[:, :step, :]
                 # if deriv output
@@ -176,7 +183,9 @@ def data_to_viz(model, pbar, num_samples, n_viz):
         ree_data = torch.squeeze(ree_motion_target, 0).cpu().data.numpy()
 
 
-        i = random.randint(1, b-1)
+        #i = random.randint(1, b-1)
+        i = idxs[k]
+        k+=1
 
         data_pred = data_pred[i]
         data_gt = data_gt[i]
@@ -211,7 +220,7 @@ def data_to_viz(model, pbar, num_samples, n_viz):
         ax.set_zlim3d([0.0, 1.5])
         ax.set_zlabel('Z')
 
-        ax.set_title('mean loss in mm is: ' + str(round(mpjpe_p3d_h36[-1].item(), 4)) + ' for action : ' + str(config.actions_to_load) + ' for ' + str(
+        ax.set_title('mean loss in mm is: ' + str(round(mpjpe_p3d_h36[-1].item(), 4)) + ' with intention : ' + str(sum(int_motion_input[i,:]).item()) + ' for ' + str(
             25) + ' frames')
 
         line_anim = animation.FuncAnimation(fig, update, 25, fargs=(data_gt, data_pred, ree_data, gt_plots, pred_plots, ree_plot,
