@@ -61,7 +61,7 @@ C.deriv_output = True
 C.use_relative_loss = True
 C.use_relative_loss_rh = False
 C.use_rh_loss = False
-C.use_ree_loss = True
+C.use_ree_loss = True #use only if int_cond is true
 C.use_rh_distance_joints_loss = True
 
 ## Loss layer

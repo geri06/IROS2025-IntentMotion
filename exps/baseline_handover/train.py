@@ -104,7 +104,7 @@ def gen_rh_distance_to_joints(motion):
     dist_tensor = torch.norm(motion - rh_motion_expanded, dim = 3)
     return dist_tensor
 
-def filter_collaboration_samples(int_motion):
+def filter_collaboration_samples(int_motion,batch_intentions):
     """
     Function created to select only samples where the subject collaborates.
     This will be used to calculate ree_loss and rh_joint_dist.
@@ -116,14 +116,9 @@ def filter_collaboration_samples(int_motion):
     List[int]: A list of batch indexes where all 50 values in dim 1 are equal to 0.
     """
     batch_collaborative_indexes = []
-
     # Check each batch in the tensor
-    for batch_idx in range(int_motion.shape[0]):
-        # Extract the slice corresponding to this batch and reshape to [50]
-        batch_data = int_motion[batch_idx, :, 0]
-
-        # Check if all values in this slice are equal to 0.0
-        if torch.all(batch_data == 0):
+    for batch_idx in range(len(batch_intentions)):
+        if batch_intentions[batch_idx] == 0:
             batch_collaborative_indexes.append(batch_idx)
     return batch_collaborative_indexes
 
@@ -219,9 +214,9 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
         total_loss += rhloss
 
 
-    if config.use_ree_loss:
+    if config.use_ree_loss and config.motion_int.int_cond:
         # filter out collaborative samples to compute ree_loss and use_rh_distance_joints_loss
-        collaboration_samples = filter_collaboration_samples(int_motion_input)
+        collaboration_samples = filter_collaboration_samples(int_motion_input,int_motion_prediction_)
         # Compute L2 between only Right Hand to see if adding more weight predictions improve
         motion_pred = motion_pred.reshape(b, n, 9, 3)
         motion_pred_collab = motion_pred[collaboration_samples,:,:,:]
