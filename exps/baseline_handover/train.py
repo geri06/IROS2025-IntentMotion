@@ -13,6 +13,8 @@ from datasets.handover import HandoverDataset
 from utils.logger import get_logger, print_and_log_info
 from utils.pyt_utils import link_file, ensure_dir
 from lib.datasets.handover_eval import HandoverEvalDataset
+from lib.utils.handover_functions import find_intentions_mode, get_dct_matrix
+
 
 from test import test
 
@@ -51,20 +53,6 @@ config.motion_mlp.num_layers = args.num
 
 # Write log file
 acc_log.write(''.join('Seed : ' + str(args.seed) + '\n'))
-
-def get_dct_matrix(N):
-    """
-    Compute DCT and IDCT matrix with dim NxN to transform data
-    """
-    dct_m = np.eye(N)
-    for k in np.arange(N):
-        for i in np.arange(N):
-            w = np.sqrt(2 / N)
-            if k == 0:
-                w = np.sqrt(1 / N)
-            dct_m[k, i] = w * np.cos(np.pi * (i + 1 / 2) * k / N)
-    idct_m = np.linalg.inv(dct_m)
-    return dct_m, idct_m
 
 # create DCT with dimensions of input lenght data (50)
 dct_m,idct_m = get_dct_matrix(config.motion.handover_input_length_dct)
@@ -121,19 +109,6 @@ def filter_collaboration_samples(int_motion,batch_intentions):
         if batch_intentions[batch_idx] == 0:
             batch_collaborative_indexes.append(batch_idx)
     return batch_collaborative_indexes
-
-def find_intentions_mode(x):
-    """
-    Given a tensor of shape ([256, 10]) returns the mode of each 10 intentions
-    in a tensor of shape ([256])
-    """
-    batch_intentions = []
-    for sample in range(x.shape[0]):
-        vals,counts = np.unique(x[sample,:], return_counts=True)
-        index = np.argmax(counts)
-        intention = vals[index]
-        batch_intentions.append(intention)
-    return torch.tensor(batch_intentions)
 
 
 def train_step(handover_motion_input, handover_motion_target, ree_motion_input, ree_motion_target, int_motion_input, int_motion_target, model, optimizer, weighted_loss_layer,nb_iter, total_iter, max_lr, min_lr) :

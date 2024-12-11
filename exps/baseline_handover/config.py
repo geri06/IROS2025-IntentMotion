@@ -127,7 +127,7 @@ C.motion_ree.gcn_concatenation = False
 C.motion_ree.gcn_do = 0
 C.motion_ree.gcn_num_stage = 0
 C.motion_ree.gcn_n_node = C.motion.handover_input_length_dct
-C.motion_ree.ree_sum = False
+C.motion_ree.ree_sum = True
 C.motion_ree.embedding_size = 27 # set to 27 in case ree_sum is True
 
 # Motion Network Int
