@@ -271,7 +271,7 @@ def viz_prediction(data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36, 
     ax.set_zlim3d([0.0, 1.5])
     ax.set_zlabel('Z')
 
-    ax.set_title('mean loss in mm is: ' + str(round(torch.mean(mpjpe_p3d_h36).item(), 4)) + ' with intention : ' + str(
+    ax.set_title('mean loss in mm is: ' + str(round(torch.mean(mpjpe_p3d_h36).item(), 3)) + ' with intention : ' + str(
         intention_data) + ' for ' + str(
         25) + ' frames')
 
@@ -325,10 +325,10 @@ if __name__ == '__main__':
     model.eval()
     model.cuda()
     #visualize(args.model_pth,5)
-    sample_path = "/home/gerard/Documents/IRI/Repos/siMLPe/data/handover/S7/straight/right_nd.txt"
+    sample_path = "/home/gerard/Documents/IRI/Repos/siMLPe/data/handover/S7/multiple_obstacles/right_outer_natural.txt"
     # define input data
     input_motion_data, input_ree_data, input_int_data, gt_motion_data, gt_ree_data, gt_int_data = get_data(sample_path)
-    forced_intention = 0
+    forced_intention = 3
 
     # do the prediction
     data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36 = predict(model, input_motion_data, gt_motion_data, input_ree_data, gt_ree_data, gt_int_data, forced_intention)
