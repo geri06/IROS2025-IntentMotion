@@ -182,10 +182,7 @@ def predict(model,motion_input, motion_target, ree_motion_input, ree_motion_targ
     # how many frames are predicted in one forward pass
     step = config.motion.handover_target_length_train
     # if 25 or more is 1
-    if step == 25:
-        num_step = 1
-    else:
-        num_step = 25 // step + 1
+    num_step = 1 if step == 25 else 25 // step + 1
     for idx in range(num_step):
         # without gradients, useful for inference
         with torch.no_grad():
@@ -197,6 +194,8 @@ def predict(model,motion_input, motion_target, ree_motion_input, ree_motion_targ
             ree_motion_input_ = ree_motion_input.clone()
             ree_motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length],
                                              ree_motion_input_.cuda())
+            # keep only the position of the last frame
+            ree_motion_input_ = ree_motion_input_[:, config.motion.handover_input_length - 1, :]
 
             int_motion_prediction_ = int_motion_target.clone()
             # select mode of the intention detected in the next 10 future frames
@@ -206,7 +205,7 @@ def predict(model,motion_input, motion_target, ree_motion_input, ree_motion_targ
             else:
                 int_motion_prediction_ = find_intentions_mode(int_motion_prediction_)
 
-            output = model(motion_input_, ree_motion_input_, int_motion_prediction_.cuda())
+            output, int_class_logits,intention_pred = model(motion_input_, ree_motion_input_, int_motion_prediction_.cuda())
             # transform output using idct_m for the rows of, handover_input_length. Then we slice to extract the first step frames of the result.
             output = torch.matmul(idct_m[:, :config.motion.handover_input_length, :], output)[:, :step, :]
 

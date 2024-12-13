@@ -31,6 +31,9 @@ class siMLPe(nn.Module):
         # Add Int conditioning
         self.int_cond = config.motion_int.int_cond
 
+        # Add Int classifier
+        self.use_int_class = config.use_int_class
+        self.pred_dim = config.motion.handover_target_length_train
 
         if self.temporal_fc_in:
             # if temporal_fc_in, Linear input and output with dimensions of dct matrix
@@ -70,6 +73,16 @@ class siMLPe(nn.Module):
         if self.int_cond:
             self.motion_int = nn.Embedding(self.config.motion_int.num_emb, self.config.motion_int.output_dim)
 
+        if self.use_int_class:
+            self.int_classifier = nn.Sequential(
+                nn.Linear(self.config.motion.dim, 128),  # Input dimension to 128
+                nn.ReLU(),  # Activation
+                nn.Linear(128, 64),  # 128 to 64
+                nn.ReLU(),  # Activation
+                nn.Linear(64, self.config.motion_int.num_emb)  # Output to number of intention classes
+            )
+
+
     def reset_parameters(self):
         """
         Initializes weights (xavier dist) and biases (init to 0) of fc_out
@@ -94,6 +107,7 @@ class siMLPe(nn.Module):
         # If we want to add ree context process it through motion_ree layer and concat
         if self.ree_cond:
             ree_feats = self.motion_ree(ree_input)
+            ree_feats = ree_feats.unsqueeze(1).repeat(1, self.config.motion.handover_input_length_dct, 1)
             motion_feats = self.arr1(motion_feats)
             # ree_feats = self.arr0(ree_feats)
 
@@ -126,6 +140,11 @@ class siMLPe(nn.Module):
         else:
             motion_feats = self.arr1(motion_feats)
             motion_feats = self.motion_fc_out(motion_feats)
+
+        if self.use_int_class:
+            int_class_logits = self.int_classifier(motion_feats[:,:self.pred_dim,:].mean(dim=1))  # Pooling along temporal dimension
+            int_predictions = torch.argmax(int_class_logits, dim=1)  # Convert logits to class indices
+            return motion_feats, int_class_logits, int_predictions
 
         return motion_feats
 

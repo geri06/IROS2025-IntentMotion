@@ -6,6 +6,7 @@ import numpy as np
 import copy
 
 from fontTools.misc.bezierTools import epsilon
+from torch.nn import CrossEntropyLoss
 
 from config import config
 from model import siMLPe as Model
@@ -14,6 +15,7 @@ from utils.logger import get_logger, print_and_log_info
 from utils.pyt_utils import link_file, ensure_dir
 from lib.datasets.handover_eval import HandoverEvalDataset
 from lib.utils.handover_functions import find_intentions_mode, get_dct_matrix
+
 
 
 from test import test
@@ -65,7 +67,7 @@ def update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer) :
     """
     Reduce learning rate to min_lr after 30000 iterations
     """
-    if nb_iter > 7000:
+    if nb_iter > 20000:
         current_lr = 1e-5
     else:
         current_lr = 3e-4
@@ -115,32 +117,24 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
     """
     Do the prediction, compute loss and update params
     """
-    # If deriv_input we apply DCT to input data
-    if config.deriv_input:
-        b,n,c = handover_motion_input.shape
-        handover_motion_input_ = handover_motion_input.clone()
-        # Transforms input data into dct (load handover_motion_input_ to cuda with dct_m which was prev loaded)
-        handover_motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length], handover_motion_input_.cuda())
-        if config.motion_ree.ree_cond:
-            ree_motion_input_ = ree_motion_input.clone()
-            ree_motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length],
-                                                  ree_motion_input_.cuda())
-        else:
-            ree_motion_input_ = torch.empty(0) # empty tensor
+    b,n,c = handover_motion_input.shape
+    handover_motion_input_ = handover_motion_input.clone()
+    # Transforms input data into dct (load handover_motion_input_ to cuda with dct_m which was prev loaded)
+    handover_motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length], handover_motion_input_.cuda())
 
-        if config.motion_int.int_cond:
-            int_motion_prediction_ = int_motion_target.clone()
-            #print(int_motion_prediction_.shape)
-            # select mode of the intention detected in the next 10 future frames
-            int_motion_prediction_ = find_intentions_mode(int_motion_prediction_)
-        else:
-            int_motion_prediction_ = torch.empty(0)
-    else:
-        # Remain equal since deriv_input == False
-        handover_motion_input_ = handover_motion_input.clone()
-        ree_motion_input_ = ree_motion_input.clone()
+    ree_motion_input_ = ree_motion_input.clone()
+    ree_motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length],
+                                          ree_motion_input_.cuda())
+    # keep only the position of the last frame
+    ree_motion_input_ = ree_motion_input_[:,config.motion.handover_input_length-1,:]
+
+    int_motion_target_ = int_motion_target.clone()
+    #print(int_motion_target_.shape)
+    # select mode of the intention detected in the next 10 future frames
+    int_motion_target_ = find_intentions_mode(int_motion_target_)
+
     # Load DCT transformed data to GPU and model predicts
-    motion_pred = model(handover_motion_input_.cuda(),ree_motion_input_.cuda(),int_motion_prediction_.cuda())
+    motion_pred, int_class_logits,intention_pred = model(handover_motion_input_.cuda(),ree_motion_input_.cuda(),int_motion_target_.cuda())
     # Do the inverse dct_m of the output (output and idct_m were already in GPU)
     motion_pred = torch.matmul(idct_m[:, :config.motion.handover_input_length, :], motion_pred)
 
@@ -191,7 +185,7 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
 
     if config.use_ree_loss and config.motion_int.int_cond:
         # filter out collaborative samples to compute ree_loss and use_rh_distance_joints_loss
-        collaboration_samples = filter_collaboration_samples(int_motion_input,int_motion_prediction_)
+        collaboration_samples = filter_collaboration_samples(int_motion_input,int_motion_target_)
         # Compute L2 between only Right Hand to see if adding more weight predictions improve
         motion_pred = motion_pred.reshape(b, n, 9, 3)
         motion_pred_collab = motion_pred[collaboration_samples,:,:,:]
@@ -211,16 +205,17 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
             gt_dist = gen_rh_distance_to_joints(motion_gt_collab)
             #print("PRED AND GT DIST", pred_dist.shape, gt_dist.shape)
             distance_joints_loss = torch.mean(abs(gt_dist-pred_dist),dim= [0,1,2])
-            extra_loss = reeloss + distance_joints_loss
             total_loss += 0.01*reeloss + 0.5*distance_joints_loss
         else:
             total_loss += 0.01 * reeloss
-            extra_loss = reeloss
 
 
-    if config.use_loss_layer:
-        total_loss, weight = weighted_loss_layer(loss,extra_loss)
-        print(weight.item())
+    if config.use_int_class:
+        criterion = torch.nn.CrossEntropyLoss()
+        #print(int_motion_target_)
+        #print(intention_pred)
+        ce_loss = criterion(int_class_logits,int_motion_target_.long().cuda())
+        total_loss += ce_loss
 
     # Save loss value to be able to visualize in tensorboard
     writer.add_scalar('Loss/angle', total_loss.detach().cpu().numpy(), nb_iter)
@@ -335,7 +330,7 @@ while (nb_iter + 1) < config.total_iters:
         if (nb_iter + 1) % config.eval_every == 0 :
             model.eval()
             # calc loss in all timeframes
-            acc_tmp, rh_loss, under_10, under_15, under_20, under_30 = test(eval_config, model, eval_dataloader)
+            acc_tmp, rh_loss, under_10, under_15, under_20, under_30, accuracy, f1 = test(eval_config, model, eval_dataloader)
             avg_rh_loss = np.mean(np.array(rh_loss))
             avg_l2_body_loss = np.mean(np.array(acc_tmp))  # mean of all time frames
             print("Iteration:",nb_iter)
@@ -345,6 +340,8 @@ while (nb_iter + 1) < config.total_iters:
             print("% Under 15", round(under_15, 3))
             print("% Under 20", round(under_20, 3))
             print("% Under 30", round(under_30,3))
+            print("% Accuracy", round(accuracy, 3))
+            print("% F1 score", round(f1, 3))
             writer.add_scalar('Body Test Loss', avg_l2_body_loss, nb_iter)
             print_and_log_info(logger, f"\t Body Test loss: {avg_l2_body_loss}")
             writer.add_scalar('RH Test Loss', avg_rh_loss, nb_iter)
@@ -360,7 +357,7 @@ while (nb_iter + 1) < config.total_iters:
             # eval model
             model.eval()
             # calc loss
-            acc_tmp, rh_loss,_,_,_,_ = test(eval_config, model, eval_dataloader)
+            acc_tmp, rh_loss,_,_,_,_,_,_ = test(eval_config, model, eval_dataloader)
             print("Body loss values", acc_tmp)
             print("RH loss values", rh_loss)
             acc_log.write(''.join(str(nb_iter + 1) + '\n'))
