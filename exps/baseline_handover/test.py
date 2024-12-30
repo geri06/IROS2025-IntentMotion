@@ -107,15 +107,27 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
         all_intention_preds.append(intention_pred.cpu())
         all_intention_targets.append(int_motion_target_)
 
-    # Concatenate all predictions and targets
-    all_intention_preds = torch.cat(all_intention_preds).numpy()
-    all_intention_targets = torch.cat(all_intention_targets).numpy()
+    if config.use_int_class:
+        # Concatenate all predictions and targets
+        all_intention_preds = torch.cat(all_intention_preds).numpy()
+        all_intention_targets = torch.cat(all_intention_targets).numpy()
 
-    # Calculate accuracy
-    accuracy = (all_intention_preds == all_intention_targets).mean() * 100
+        # Calculate accuracy
+        accuracy = (all_intention_preds == all_intention_targets).mean() * 100
 
-    # Calculate F1 Score (macro or weighted depending on need)
-    f1 = f1_score(all_intention_targets, all_intention_preds, average='macro')  # Use 'weighted' if needed
+        # Calculate F1 Score (macro or weighted depending on need)
+        f1 = f1_score(all_intention_targets, all_intention_preds, average="macro")  # Use 'weighted' if needed
+
+        # Calculate f1 score in binary classification: 0 or others.
+        binary_targets = np.array(all_intention_targets) != 0  # True if not 0, False otherwise
+        binary_preds = np.array(all_intention_preds) != 0  # True if not 0, False otherwise
+        f1_binary = f1_score(binary_targets, binary_preds, average="macro")
+
+
+    else:
+        accuracy = 0
+        f1 = 0
+        f1_binary = 0
 
     # compute mean loss diving by the total number of batches giving the mean loss error per timestep
     m_p3d_handover = m_p3d_handover / num_samples
@@ -124,7 +136,7 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
     u20 = np.array(under_20).mean() * 100
     u30 = np.array(under_30).mean()*100
     right_hand_loss = right_hand_loss / num_samples
-    return m_p3d_handover, right_hand_loss, u10, u15, u20, u30, accuracy, f1
+    return m_p3d_handover, right_hand_loss, u10, u15, u20, u30, accuracy, f1, f1_binary
 
 def test(config, model, dataloader) :
 
@@ -134,13 +146,13 @@ def test(config, model, dataloader) :
     num_samples = 0
 
     pbar = dataloader
-    m_p3d_handover, right_hand_loss, under_10, under_15, under_20, under_30, accuracy, f1  = regress_pred(model, pbar, num_samples, m_p3d_handover,right_hand_loss)
+    m_p3d_handover, right_hand_loss, under_10, under_15, under_20, under_30, accuracy, f1, f1_binary  = regress_pred(model, pbar, num_samples, m_p3d_handover,right_hand_loss)
 
     # This returns a dictionary with the correspondant loss to each time frame in results time frames
     ret = {}
     for j in range(config.motion.handover_target_length):
         ret["#{:d}".format(titles[j])] = [m_p3d_handover[j], m_p3d_handover[j]]
-    return [round(ret[key][0], 2) for key in results_keys], right_hand_loss, under_10, under_15, under_20, under_30, accuracy, f1
+    return [round(ret[key][0], 2) for key in results_keys], right_hand_loss, under_10, under_15, under_20, under_30, accuracy, f1, f1_binary
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)

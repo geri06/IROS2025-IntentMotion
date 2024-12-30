@@ -12,7 +12,7 @@ from easydict import EasyDict as edict
 import argparse
 
 C = edict()
-config = C
+config_classifier = C
 cfg = C
 
 C.seed = 304
@@ -62,8 +62,8 @@ C.deriv_output = True
 C.use_relative_loss = True
 C.use_relative_loss_rh = False
 C.use_rh_loss = False
-C.use_ree_loss = False
-C.use_rh_distance_joints_loss = False
+C.use_ree_loss = True
+C.use_rh_distance_joints_loss = True
 
 ## Loss layer
 C.use_loss_layer = False
@@ -133,14 +133,14 @@ C.motion_ree.embedding_size = 3 # set to 27 in case ree_sum is True
 
 # Motion Network Int
 C.motion_int = edict()
-C.motion_int.int_cond = True
+C.motion_int.int_cond = False
 
 C.motion_int.input_dim = 1
 C.motion_int.num_emb = 5
 C.motion_int.output_dim = 27 # set to 27 in case we sum int embedding
 
 # Intention classifier
-C.use_int_class = False
+C.use_int_class = True
 C.classifier = edict()
 C.classifier.flatten = True
 C.only_classification = False

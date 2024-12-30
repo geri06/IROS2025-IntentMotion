@@ -12,6 +12,9 @@ from datasets.handover import HandoverDataset
 from utils.logger import get_logger, print_and_log_info
 from utils.pyt_utils import link_file, ensure_dir
 from lib.datasets.handover_eval import HandoverEvalDataset
+from train import train_step
+from lib.utils.handover_functions import get_dct_matrix
+
 
 from test import test
 
@@ -51,164 +54,6 @@ config.motion_mlp.num_layers = args.num
 # Write log file
 acc_log.write(''.join('Seed : ' + str(args.seed) + '\n'))
 
-def get_dct_matrix(N):
-    """
-    Compute DCT and IDCT matrix with dim NxN to transform data
-    """
-    dct_m = np.eye(N)
-    for k in np.arange(N):
-        for i in np.arange(N):
-            w = np.sqrt(2 / N)
-            if k == 0:
-                w = np.sqrt(1 / N)
-            dct_m[k, i] = w * np.cos(np.pi * (i + 1 / 2) * k / N)
-    idct_m = np.linalg.inv(dct_m)
-    return dct_m, idct_m
-
-def update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer) :
-    """
-    Reduce learning rate to min_lr after 30000 iterations
-    """
-    if nb_iter > 7000:
-        current_lr = 1e-5
-    else:
-        current_lr = 3e-4
-
-    for param_group in optimizer.param_groups:
-        param_group["lr"] = current_lr
-
-    return optimizer, current_lr
-
-def gen_velocity(m):
-    """
-    Generates the velocity between two frames Xt+1 - Xt
-    for 1 joint: j = [t5,t6,t7,t8]
-    v =  [t6 - t5, t7 - t6, t8 - t7]
-    """
-    dm = m[:, 1:] - m[:, :-1]
-    return dm
-
-def gen_rh_distance_to_joints(motion):
-    b,c,n,_ = motion.shape
-    rh_motion = motion[:,:,5,:] # select rh joint
-    rh_motion = rh_motion.unsqueeze(dim = 2)
-    rh_motion_expanded = rh_motion.expand(-1, -1, n, -1)  # Shape: [256, 10, 9, 3]
-    dist_tensor = torch.norm(motion - rh_motion_expanded, dim = 3)
-    return dist_tensor
-
-def train_step(handover_motion_input, handover_motion_target, ree_motion_input, ree_motion_target, model, optimizer, nb_iter, total_iter, max_lr, min_lr) :
-    """
-    Do the prediction, compute loss and update params
-    """
-    # If deriv_input we apply DCT to input data
-    if config.deriv_input:
-        b,n,c = handover_motion_input.shape
-        handover_motion_input_ = handover_motion_input.clone()
-        # Transforms input data into dct (load handover_motion_input_ to cuda with dct_m which was prev loaded)
-        handover_motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length], handover_motion_input_.cuda())
-        if config.motion_ree.ree_cond:
-            ree_motion_input_ = ree_motion_input.clone()
-            ree_motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length],
-                                             ree_motion_input_.cuda())
-        else:
-            ree_motion_input_ = torch.empty(0)  # empty tensor
-    else:
-        # Remain equal since deriv_input == False
-        handover_motion_input_ = handover_motion_input.clone()
-        ree_motion_input_ = ree_motion_input.clone()
-
-    # Load DCT transformed data to GPU and model predicts
-    motion_pred = model(handover_motion_input_.cuda(),ree_motion_input_.cuda())
-    # Do the inverse dct_m of the output (output and idct_m were already in GPU)
-    motion_pred = torch.matmul(idct_m[:, :config.motion.handover_input_length, :], motion_pred)
-
-    # Check if we want an offset correction
-    if config.deriv_output:
-        # Load to the GPU the last frame xT (all joints time T) of each batch
-        offset = handover_motion_input[:, -1:].cuda()
-        # We slice target_length frames and add the offset to the prediction (done to obtain absolute 3D points since we predicted difference with XT)
-        motion_pred = motion_pred[:, :config.motion.handover_target_length] + offset
-    else:
-        # Remains the same if not
-        motion_pred = motion_pred[:, :config.motion.handover_target_length]
-
-    # --- Compute MPJPE loss --- #
-    # Safe "goal" results
-    b,n,c = handover_motion_target.shape
-    # First reshape is to undo flattened 9*3, 2nd reshape flattens the first 3 dims (b*n*9,3)
-    motion_pred = motion_pred.reshape(b,n,9,3).reshape(-1,3)
-    handover_motion_target = handover_motion_target.cuda().reshape(b,n,9,3).reshape(-1,3)
-    # Compute L2 eucl. dist. between points and after that the mean.
-    loss = torch.mean(torch.norm(motion_pred - handover_motion_target, 2, 1))
-    # If we want to use Lv (loss with velocities)
-    if config.use_relative_loss:
-        motion_pred = motion_pred.reshape(b,n,9,3)
-        # generate the velocity xt+1 - xt of the prediction
-        dmotion_pred = gen_velocity(motion_pred)
-        motion_gt = handover_motion_target.reshape(b,n,9,3)
-        # generate the velocity xt+1 - xt of the ground truth
-        dmotion_gt = gen_velocity(motion_gt)
-        # Compute L2 mean of the reshaped difference tensor
-        dloss = torch.mean(torch.norm((dmotion_pred - dmotion_gt).reshape(-1,3), 2, 1))
-        # Add losses
-        loss = loss + dloss
-        if config.use_relative_loss_rh:
-            # focus to improve right hand velocity
-            dloss_rh = torch.mean(torch.norm((dmotion_pred[:,:,[5],:] - dmotion_gt[:,:,[5],:]).reshape(-1,3), 2, 1))
-            loss += 0.1*dloss_rh
-    else:
-        # again mean? unnecessary i think
-        loss = loss.mean()
-
-    if config.use_rh_loss:
-        # Compute L2 between only Right Hand to see if adding more weight predictions improve
-        motion_pred = motion_pred.reshape(b, n, 9, 3)
-        motion_gt = handover_motion_target.reshape(b, n, 9, 3)
-        right_hand_gt = motion_gt[:, :, 5, :]
-        right_hand_pred = motion_pred[:, :, 5, :]
-        rhloss = torch.mean(torch.mean(torch.norm(right_hand_pred - right_hand_gt, dim=2), dim=1), dim = 0)
-        loss = loss + rhloss
-
-    if config.use_ree_loss:
-        # Compute L2 between only Right Hand to see if adding more weight predictions improve
-        motion_pred = motion_pred.reshape(b, n, 9, 3)
-        right_hand_pred_last_frame = motion_pred[:, config.motion.handover_target_length_train - 1, 5, :]
-        ree_target = ree_motion_target[:, config.motion.handover_target_length_train - 1, :]
-        reeloss = torch.mean(torch.norm(right_hand_pred_last_frame - ree_target.cuda(), dim=1), dim=0)
-        if config.use_rh_distance_joints_loss:
-            # Compute L2 between the correct mean distance from RH to other joints and the predicted distance
-            # Calcular distancia de RH als altres joints a pred i gt, fer una funció que ho faci.
-            motion_gt = handover_motion_target.reshape(b, n, 9, 3)
-            pred_dist = gen_rh_distance_to_joints(motion_pred)
-            gt_dist = gen_rh_distance_to_joints(motion_gt)
-            distance_joints_loss = torch.mean(abs(gt_dist-pred_dist),dim= [0,1,2])
-            extra_loss = reeloss + distance_joints_loss
-            loss += 0.05*reeloss + distance_joints_loss
-        else:
-            loss += 0.01 * reeloss
-
-
-    # Save loss value to be able to visualize in tensorboard
-    writer.add_scalar('Loss/angle', loss.detach().cpu().numpy(), nb_iter)
-
-    # delete derivates saved in loss.backward of previous iter.
-    optimizer.zero_grad()
-    # accumulate derivatives of the current loss with respect to params
-    loss.backward()
-    # update paràmeters
-    optimizer.step()
-    # we set lr to min when config.lr_cos_total_iter is exceeded
-    if nb_iter >= config.cos_lr_total_iters:
-        current_lr = config.cos_lr_min
-    else: # save lr and update optimizer
-        current_lr = optimizer.param_groups[0]["lr"]
-        scheduler.step()
-    # optimizer, current_lr = update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer)
-    # Save current lr to tensorboard
-    writer.add_scalar('LR/train', current_lr, nb_iter)
-
-    # loss.item() returns the value of loss tensor as float.
-    return loss.item(), optimizer, current_lr
 
 # create DCT with dimensions of input lenght data (50)
 dct_m,idct_m = get_dct_matrix(config.motion.handover_input_length_dct)
@@ -236,13 +81,13 @@ def subject_splits():
 
 
 ### ------------ Training with cross validation ------------- ###
-metrics = {"L2_body": [], "L2_right_hand":[], "under_0.10m":[], "under_0.15m":[],"under_0.20m":[], "under_0.30m":[]}
+metrics = {"L2_body": [], "L2_right_hand":[], "under_0.10m":[], "under_0.15m":[],"under_0.20m":[], "under_0.30m":[], "accuracy":[], "f1_score":[]}
 
 # crete logger and stuff to add log files with config and info
 
 ensure_dir(config.snapshot_dir)
-logger = get_logger(config.log_file, 'train')
-link_file(config.log_file, config.link_log_file)
+logger = get_logger(config.log_file_leave_one_out, 'train')
+link_file(config.log_file_leave_one_out, config.link_log_file)
 print_and_log_info(logger, json.dumps(config, indent=4, sort_keys=True))
 
 # Obtain subjects combinations
@@ -316,12 +161,11 @@ for split in splits:
     # until max num iters
     while (nb_iter + 1) < config.total_iters:
         # iterates over batches of data from the dataloder
-        for (handover_motion_input, handover_motion_target, ree_motion_input, ree_motion_target) in dataloader:
+        for (handover_motion_input, handover_motion_target, ree_motion_input, ree_motion_target, int_motion_input,
+             int_motion_target) in dataloader:
 
             # compute the train step and save loss, lr and opt
-            loss, optimizer, current_lr = train_step(handover_motion_input, handover_motion_target, ree_motion_input,ree_motion_target, model, optimizer,
-                                                     nb_iter, config.cos_lr_total_iters, config.cos_lr_max,
-                                                     config.cos_lr_min)
+            loss, optimizer, current_lr = train_step(handover_motion_input, handover_motion_target, ree_motion_input,ree_motion_target, int_motion_input, int_motion_target ,model, optimizer, nb_iter)
             # save avg loss and lr to add it to the log file
             avg_loss += loss
             avg_lr += current_lr
@@ -339,7 +183,8 @@ for split in splits:
             if (nb_iter + 1) % config.eval_every == 0:
                 model.eval()
                 # calc loss in all timeframes
-                acc_tmp, rh_loss, under_10, under_15, under_20, under_30 = test(eval_config, model, eval_dataloader)
+                acc_tmp, rh_loss, under_10, under_15, under_20, under_30, accuracy, f1, f1_binary = test(eval_config, model,
+                                                                                              eval_dataloader)
                 avg_rh_loss = np.mean(np.array(rh_loss))
                 avg_l2_body_loss = np.mean(np.array(acc_tmp))  # mean of all time frames
                 print("Iteration:", nb_iter)
@@ -349,10 +194,14 @@ for split in splits:
                 print("% Under 15", round(under_15, 3))
                 print("% Under 20", round(under_20, 3))
                 print("% Under 30", round(under_30, 3))
+                print("% Accuracy", round(accuracy, 3))
+                print("% F1 score", round(f1, 3))
                 writer.add_scalar('Body Test Loss', avg_l2_body_loss, nb_iter)
                 print_and_log_info(logger, f"\t Body Test loss: {avg_l2_body_loss}")
                 writer.add_scalar('RH Test Loss', avg_rh_loss, nb_iter)
                 print_and_log_info(logger, f"\t RH Test loss: {avg_rh_loss}")
+                writer.add_scalar('F1 score', f1, nb_iter)
+                print_and_log_info(logger, f"\t F1 score: {f1}")
                 model.train()
 
             # every config.save_every we save the model
@@ -364,7 +213,7 @@ for split in splits:
                 # eval model
                 model.eval()
                 # calc loss
-                acc_tmp, rh_loss, under_10, under_15, under_20, under_30 = test(eval_config, model, eval_dataloader)
+                acc_tmp, rh_loss, _, _, _, _, _, _,_ = test(eval_config, model, eval_dataloader)
                 print("Body loss values", acc_tmp)
                 print("RH loss values", rh_loss)
                 acc_log.write(''.join(str(nb_iter + 1) + '\n'))
@@ -389,6 +238,8 @@ for split in splits:
                 metrics["under_0.15m"].append(under_15)
                 metrics["under_0.20m"].append(under_20)
                 metrics["under_0.30m"].append(under_30)
+                metrics["accuracy"].append(accuracy)
+                metrics["f1_score"].append(f1)
                 break
             nb_iter += 1
 
@@ -400,5 +251,7 @@ print_and_log_info(logger, "Under 0.10 is {}".format(sum(metrics["under_0.10m"])
 print_and_log_info(logger, "Under 0.15 is {}".format(sum(metrics["under_0.15m"])/len(metrics["under_0.15m"])))
 print_and_log_info(logger, "Under 0.20 is {}".format(sum(metrics["under_0.20m"])/len(metrics["under_0.20m"])))
 print_and_log_info(logger, "Under 0.30 is {}".format(sum(metrics["under_0.30m"])/len(metrics["under_0.30m"])))
+print_and_log_info(logger, "Intention Accuracy is {}".format(sum(metrics["accuracy"])/len(metrics["accuracy"])))
+print_and_log_info(logger, "F1 Score is {}".format(sum(metrics["f1_score"])/len(metrics["f1_score"])))
 
 print_and_log_info(logger, "Metrics are {}".format(metrics))

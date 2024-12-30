@@ -17,13 +17,12 @@ from lib.datasets.handover_eval import HandoverEvalDataset
 from lib.utils.handover_functions import find_intentions_mode, get_dct_matrix
 
 
-
 from test import test
 
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from WeightedLoss import WeightedLossLayer
+
 # Training params
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--exp-name', type=str, default=None, help='=exp name')
@@ -113,7 +112,7 @@ def filter_collaboration_samples(int_motion,batch_intentions):
     return batch_collaborative_indexes
 
 
-def train_step(handover_motion_input, handover_motion_target, ree_motion_input, ree_motion_target, int_motion_input, int_motion_target, model, optimizer, weighted_loss_layer,nb_iter, total_iter, max_lr, min_lr) :
+def train_step(handover_motion_input, handover_motion_target, ree_motion_input, ree_motion_target, int_motion_input, int_motion_target, model, optimizer,nb_iter) :
     """
     Do the prediction, compute loss and update params
     """
@@ -183,7 +182,7 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
         total_loss += rhloss
 
 
-    if config.use_ree_loss and config.motion_int.int_cond:
+    if config.use_ree_loss:
         # filter out collaborative samples to compute ree_loss and use_rh_distance_joints_loss
         collaboration_samples = filter_collaboration_samples(int_motion_input,int_motion_target_)
         # Compute L2 between only Right Hand to see if adding more weight predictions improve
@@ -212,10 +211,12 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
 
     if config.use_int_class:
         criterion = torch.nn.CrossEntropyLoss()
-        #print(int_motion_target_)
-        #print(intention_pred)
         ce_loss = criterion(int_class_logits,int_motion_target_.long().cuda())
-        total_loss += ce_loss
+        writer.add_scalar('CE loss', ce_loss.detach().cpu().numpy(), nb_iter)
+        if config.only_classification:
+            total_loss = ce_loss
+        else:
+            total_loss = total_loss*0.05 + ce_loss*0.95
 
     # Save loss value to be able to visualize in tensorboard
     writer.add_scalar('Loss/angle', total_loss.detach().cpu().numpy(), nb_iter)
@@ -231,7 +232,8 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
         current_lr = config.cos_lr_min
     else: # save lr and update optimizer
         current_lr = optimizer.param_groups[0]["lr"]
-        scheduler.step()
+        if config.cosine_lr:
+            scheduler.step()
     # optimizer, current_lr = update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer)
     # Save current lr to tensorboard
     writer.add_scalar('LR/train', current_lr, nb_iter)
@@ -243,11 +245,6 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
 model = Model(config)
 model.train()
 model.cuda()
-
-# We always use L2 body loss
-num_losses = sum([config.use_rh_loss, config.use_ree_loss])
-weighted_loss_layer = WeightedLossLayer(num_losses=num_losses)  # Example: for 3 losses
-weighted_loss_layer.cuda()
 
 # define target lenght com target lenght train
 config.motion.handover_target_length = config.motion.handover_target_length_train
@@ -279,14 +276,13 @@ eval_dataloader = DataLoader(eval_dataset, batch_size=128,
 
 
 # initialize optimizer model and loss layer params
-optimizer = torch.optim.Adam(list(model.parameters()) + list(weighted_loss_layer.parameters()),
+optimizer = torch.optim.Adam(list(model.parameters()),
                              lr=config.cos_lr_max,
                              weight_decay=config.weight_decay)
 
 
-
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config.cos_lr_total_iters, eta_min=config.cos_lr_min)
-
+if config.cosine_lr:
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config.cos_lr_total_iters, eta_min=config.cos_lr_min)
 
 # crete logger and stuff to add log files with config and info
 ensure_dir(config.snapshot_dir)
@@ -312,7 +308,7 @@ while (nb_iter + 1) < config.total_iters:
     for (handover_motion_input, handover_motion_target,ree_motion_input,ree_motion_target, int_motion_input, int_motion_target) in dataloader:
 
         # compute the train step and save loss, lr and opt
-        loss, optimizer, current_lr = train_step(handover_motion_input, handover_motion_target, ree_motion_input,ree_motion_target, int_motion_input, int_motion_target ,model, optimizer, weighted_loss_layer,nb_iter, config.cos_lr_total_iters, config.cos_lr_max, config.cos_lr_min)
+        loss, optimizer, current_lr = train_step(handover_motion_input, handover_motion_target, ree_motion_input,ree_motion_target, int_motion_input, int_motion_target ,model, optimizer, nb_iter)
         # save avg loss and lr to add it to the log file
         avg_loss += loss
         avg_lr += current_lr
@@ -330,7 +326,7 @@ while (nb_iter + 1) < config.total_iters:
         if (nb_iter + 1) % config.eval_every == 0 :
             model.eval()
             # calc loss in all timeframes
-            acc_tmp, rh_loss, under_10, under_15, under_20, under_30, accuracy, f1 = test(eval_config, model, eval_dataloader)
+            acc_tmp, rh_loss, under_10, under_15, under_20, under_30, accuracy, f1, f1_binary = test(eval_config, model, eval_dataloader)
             avg_rh_loss = np.mean(np.array(rh_loss))
             avg_l2_body_loss = np.mean(np.array(acc_tmp))  # mean of all time frames
             print("Iteration:",nb_iter)
@@ -342,10 +338,13 @@ while (nb_iter + 1) < config.total_iters:
             print("% Under 30", round(under_30,3))
             print("% Accuracy", round(accuracy, 3))
             print("% F1 score", round(f1, 3))
+            print("% Binary F1 score", round(f1_binary, 3))
             writer.add_scalar('Body Test Loss', avg_l2_body_loss, nb_iter)
             print_and_log_info(logger, f"\t Body Test loss: {avg_l2_body_loss}")
             writer.add_scalar('RH Test Loss', avg_rh_loss, nb_iter)
             print_and_log_info(logger, f"\t RH Test loss: {avg_rh_loss}")
+            writer.add_scalar('F1 score', f1, nb_iter)
+            print_and_log_info(logger, f"\t F1 score: {f1}")
             model.train()
 
         # every config.save_every we save the model
@@ -357,7 +356,7 @@ while (nb_iter + 1) < config.total_iters:
             # eval model
             model.eval()
             # calc loss
-            acc_tmp, rh_loss,_,_,_,_,_,_ = test(eval_config, model, eval_dataloader)
+            acc_tmp, rh_loss,_,_,_,_,_,_,_ = test(eval_config, model, eval_dataloader)
             print("Body loss values", acc_tmp)
             print("RH loss values", rh_loss)
             acc_log.write(''.join(str(nb_iter + 1) + '\n'))

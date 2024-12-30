@@ -34,6 +34,7 @@ class siMLPe(nn.Module):
         # Add Int classifier
         self.use_int_class = config.use_int_class
         self.pred_dim = config.motion.handover_target_length_train
+        self.flatten = config.classifier.flatten
 
         if self.temporal_fc_in:
             # if temporal_fc_in, Linear input and output with dimensions of dct matrix
@@ -74,14 +75,17 @@ class siMLPe(nn.Module):
             self.motion_int = nn.Embedding(self.config.motion_int.num_emb, self.config.motion_int.output_dim)
 
         if self.use_int_class:
+            if self.flatten:
+                input_dim = self.config.motion.dim * self.config.motion.handover_target_length_train
+            else:
+                input_dim = self.config.motion.dim
             self.int_classifier = nn.Sequential(
-                nn.Linear(self.config.motion.dim, 128),  # Input dimension to 128
+                nn.Linear(input_dim, 128),
                 nn.ReLU(),  # Activation
-                nn.Linear(128, 64),  # 128 to 64
+                nn.Linear(128, 64),
                 nn.ReLU(),  # Activation
                 nn.Linear(64, self.config.motion_int.num_emb)  # Output to number of intention classes
             )
-
 
     def reset_parameters(self):
         """
@@ -142,9 +146,15 @@ class siMLPe(nn.Module):
             motion_feats = self.motion_fc_out(motion_feats)
 
         if self.use_int_class:
-            int_class_logits = self.int_classifier(motion_feats[:,:self.pred_dim,:].mean(dim=1))  # Pooling along temporal dimension
+            #print(torch.flatten(motion_feats[:,:self.pred_dim,:],start_dim=1).shape)
+            if self.flatten:
+                int_class_logits = self.int_classifier(torch.flatten(motion_feats[:,:self.pred_dim,:],start_dim=1))  # Flatten dims 1 and 2 considering the 10 first predited frames
+            else:
+                int_class_logits = self.int_classifier(motion_feats[:,:self.pred_dim,:].mean(dim=1))  # Pooling along temporal dimension
             int_predictions = torch.argmax(int_class_logits, dim=1)  # Convert logits to class indices
-            return motion_feats, int_class_logits, int_predictions
+        else:
+            int_class_logits = torch.empty(0)
+            int_predictions = torch.empty(0)
 
-        return motion_feats
+        return motion_feats, int_class_logits, int_predictions
 

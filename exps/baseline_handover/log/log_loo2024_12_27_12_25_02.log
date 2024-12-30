@@ -1,0 +1,115 @@
+[2024-12-27 12:30:12,378] INFO: {
+    "abs_dir": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover",
+    "actions_to_load": "all",
+    "batch_size": 256,
+    "classifier": {
+        "flatten": true
+    },
+    "cos_lr_max": 0.01,
+    "cos_lr_min": 1e-05,
+    "cos_lr_total_iters": 5000,
+    "cosine_lr": true,
+    "data_aug": true,
+    "deriv_input": true,
+    "deriv_output": true,
+    "eval_every": 250,
+    "handover_anno_dir": "/home/gerard/Documents/IRI/Repos/siMLPe/data/handover/",
+    "link_log_file": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/log_last.log",
+    "link_val_log_file": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/val_last.log",
+    "log_dir": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log",
+    "log_file": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/log_2024_12_27_12_25_02.log",
+    "log_file_leave_one_out": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/log_loo2024_12_27_12_25_02.log",
+    "model_pth": null,
+    "motion": {
+        "dim": 27,
+        "handover_input_length": 50,
+        "handover_input_length_dct": 50,
+        "handover_target_length": 10,
+        "handover_target_length_eval": 25,
+        "handover_target_length_train": 10
+    },
+    "motion_fc_in": {
+        "activation": "relu",
+        "in_features": 27,
+        "init_w_trunc_normal": false,
+        "out_features": 27,
+        "temporal_fc": false,
+        "with_norm": false
+    },
+    "motion_fc_out": {
+        "activation": "relu",
+        "in_features": 27,
+        "init_w_trunc_normal": true,
+        "out_features": 27,
+        "temporal_fc": false,
+        "with_norm": false
+    },
+    "motion_gcn_in": {
+        "do": 0,
+        "gcn_in": false,
+        "in_features": 27,
+        "n_node": 50,
+        "num_stage": 0,
+        "out_features": 27
+    },
+    "motion_gcn_out": {
+        "do": 0,
+        "gcn_out": false,
+        "in_features": 27,
+        "n_node": 50,
+        "num_stage": 0,
+        "out_features": 27
+    },
+    "motion_int": {
+        "input_dim": 1,
+        "int_cond": true,
+        "num_emb": 5,
+        "output_dim": 27
+    },
+    "motion_mlp": {
+        "hidden_dim": 27,
+        "norm_axis": "spatial",
+        "num_layers": 48,
+        "seq_len": 50,
+        "spatial_fc_only": false,
+        "with_normalization": true
+    },
+    "motion_ree": {
+        "embedding_size": 3,
+        "gcn_concatenation": false,
+        "gcn_do": 0,
+        "gcn_n_node": 50,
+        "gcn_num_stage": 0,
+        "input_dim": 3,
+        "ree_concatenation": false,
+        "ree_cond": false,
+        "ree_sum": false
+    },
+    "num_workers": 6,
+    "only_classification": false,
+    "post_dct": false,
+    "pre_dct": false,
+    "print_every": 250,
+    "repo_name": "siMLPe",
+    "root_dir": "/home/gerard/Documents/IRI/Repos/siMLPe",
+    "save_every": 2500,
+    "seed": 304,
+    "shift_step": 1,
+    "snapshot_dir": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/snapshot",
+    "this_dir": "baseline_handover",
+    "total_iters": 5000,
+    "use_int_class": false,
+    "use_loss_layer": false,
+    "use_ree_loss": false,
+    "use_relative_loss": true,
+    "use_relative_loss_rh": false,
+    "use_rh_distance_joints_loss": false,
+    "use_rh_loss": false,
+    "val_log_file": "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/val_2024_12_27_12_25_02.log",
+    "viz_GCN_folder": false,
+    "weight_decay": 0.0001
+}
+[2024-12-27 12:30:13,106] INFO: Testing with subject ['S10'] 
+[2024-12-27 12:30:13,106] INFO: Training with subjects ['S5', 'S3', 'S6', 'S8', 'S9', 'S4', 'S7'] 
+[2024-12-27 12:30:29,303] INFO: Iter 250 Summary: 
+[2024-12-27 12:30:29,303] INFO: 	 lr: 0.009999999999999962 	 Training loss: 0.770848030090332
