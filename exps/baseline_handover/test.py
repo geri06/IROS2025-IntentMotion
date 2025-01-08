@@ -3,30 +3,23 @@ import os, sys
 from scipy.spatial.transform import Rotation as R
 
 import numpy as np
+from config_classifier  import config_classifier
 from config  import config
 from model import siMLPe as Model
 from datasets.handover_eval import HandoverEvalDataset
 from utils.misc import rotmat2xyz_torch, rotmat2euler_torch
 from lib.utils.loss import L2_right_hand, L2_body, quality_metrics
+from lib.utils.handover_functions import find_intentions_mode, get_dct_matrix
+
 
 import torch
 from torch.utils.data import DataLoader
 
-results_keys = ['#1','#2', '#3','#4', '#5', '#6', '#7','#8', '#9','#10', '#11', '#12', '#13', '#14', '#15', '#16', '#17', '#18', '#19', '#20', '#21', '#22', '#23', '#24', '#25']
+from sklearn.metrics import f1_score
 
-def get_dct_matrix(N):
-    """
-    Compute DCT and IDCT matrix with dim NxN to transform data
-    """
-    dct_m = np.eye(N)
-    for k in np.arange(N):
-        for i in np.arange(N):
-            w = np.sqrt(2 / N)
-            if k == 0:
-                w = np.sqrt(1 / N)
-            dct_m[k, i] = w * np.cos(np.pi * (i + 1 / 2) * k / N)
-    idct_m = np.linalg.inv(dct_m)
-    return dct_m, idct_m
+# config = config_classifier # Use when testing the classifier
+
+results_keys = ['#1','#2', '#3','#4', '#5', '#6', '#7','#8', '#9','#10', '#11', '#12', '#13', '#14', '#15', '#16', '#17', '#18', '#19', '#20', '#21', '#22', '#23', '#24', '#25']
 
 # create DCT with dimensions of input lenght data (50)
 dct_m,idct_m = get_dct_matrix(config.motion.handover_input_length_dct)
@@ -43,6 +36,9 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
     under_20 = []
     under_15 = []
     under_10 = []
+    all_intention_preds = []
+    all_intention_targets = []
+
     for (motion_input, motion_target, ree_motion_input, ree_motion_target, int_motion_input, int_motion_target) in pbar:
         motion_input = motion_input.cuda()
         b,n,c = motion_input.shape
@@ -52,33 +48,24 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
         # how many frames are predicted in one forward pass
         step = config.motion.handover_target_length_train
         # if 25 or more is 1
-        if step == 25:
-            num_step = 1
-        else:
-            num_step = 25 // step + 1
+        num_step = 1 if step == 25 else 25 // step + 1
         for idx in range(num_step):
             # without gradients, useful for inference
             with torch.no_grad():
-                # if we want dct encoding
-                if config.deriv_input:
-                    motion_input_ = motion_input.clone()
-                    motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length], motion_input_.cuda())
-                    if config.motion_ree.ree_cond:
-                        ree_motion_input_ = ree_motion_input.clone()
-                        ree_motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length],
-                                                         ree_motion_input_.cuda())
-                    else:
-                        ree_motion_input_ = torch.empty(0)
+                motion_input_ = motion_input.clone()
+                motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length], motion_input_.cuda())
+                ree_motion_input_ = ree_motion_input.clone()
+                ree_motion_input_ = torch.matmul(dct_m[:, :, :config.motion.handover_input_length],
+                                                 ree_motion_input_.cuda())
+                # keep only the position of the last frame
+                ree_motion_input_ = ree_motion_input_[:, config.motion.handover_input_length - 1, :]
 
-                    if config.motion_int.int_cond:
-                        int_motion_input_ = int_motion_input.clone()
-                        int_motion_input_ = int_motion_input_.reshape(-1,config.motion.handover_input_length)
-                    else:
-                        int_motion_input_ = torch.empty(0)
-                else:
-                    motion_input_ = motion_input.clone()
-                    ree_motion_input_ = None
-                output = model(motion_input_,ree_motion_input_, int_motion_input_.cuda())
+
+                int_motion_target_ = int_motion_target.clone()
+                # select mode of the intention detected in the next 10 future frames
+                int_motion_target_ = find_intentions_mode(int_motion_target_)
+
+                output , int_class_logits,intention_pred = model(motion_input_,ree_motion_input_, int_motion_target_.cuda())
                 # transform output using idct_m for the rows of, handover_input_length. Then we slice to extract the first step frames of the result.
                 output = torch.matmul(idct_m[:, :config.motion.handover_input_length, :], output)[:, :step, :]
                 # if deriv output
@@ -117,6 +104,33 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
         m_p3d_handover += mpjpe_p3d_handover.cpu().numpy()
         right_hand_loss_batch = L2_right_hand(motion_gt, motion_pred)
         right_hand_loss += right_hand_loss_batch.cpu().numpy()
+
+        # Collect intention predictions and targets for accuracy/F1
+        all_intention_preds.append(intention_pred.cpu())
+        all_intention_targets.append(int_motion_target_)
+
+    if config.use_int_class:
+        # Concatenate all predictions and targets
+        all_intention_preds = torch.cat(all_intention_preds).numpy()
+        all_intention_targets = torch.cat(all_intention_targets).numpy()
+
+        # Calculate accuracy
+        accuracy = (all_intention_preds == all_intention_targets).mean() * 100
+
+        # Calculate F1 Score (macro or weighted depending on need)
+        f1 = f1_score(all_intention_targets, all_intention_preds, average="macro")  # Use 'weighted' if needed
+
+        # Calculate f1 score in binary classification: 0 or others.
+        binary_targets = np.array(all_intention_targets) != 0  # True if not 0, False otherwise
+        binary_preds = np.array(all_intention_preds) != 0  # True if not 0, False otherwise
+        f1_binary = f1_score(binary_targets, binary_preds, average="macro")
+
+
+    else:
+        accuracy = 0
+        f1 = 0
+        f1_binary = 0
+
     # compute mean loss diving by the total number of batches giving the mean loss error per timestep
     m_p3d_handover = m_p3d_handover / num_samples
     u10 = np.array(under_10).mean() * 100
@@ -124,7 +138,7 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
     u20 = np.array(under_20).mean() * 100
     u30 = np.array(under_30).mean()*100
     right_hand_loss = right_hand_loss / num_samples
-    return m_p3d_handover, right_hand_loss, u10, u15, u20, u30
+    return m_p3d_handover, right_hand_loss, u10, u15, u20, u30, accuracy, f1, f1_binary
 
 def test(config, model, dataloader) :
 
@@ -134,13 +148,13 @@ def test(config, model, dataloader) :
     num_samples = 0
 
     pbar = dataloader
-    m_p3d_handover, right_hand_loss, under_10, under_15, under_20, under_30  = regress_pred(model, pbar, num_samples, m_p3d_handover,right_hand_loss)
+    m_p3d_handover, right_hand_loss, under_10, under_15, under_20, under_30, accuracy, f1, f1_binary  = regress_pred(model, pbar, num_samples, m_p3d_handover,right_hand_loss)
 
     # This returns a dictionary with the correspondant loss to each time frame in results time frames
     ret = {}
     for j in range(config.motion.handover_target_length):
         ret["#{:d}".format(titles[j])] = [m_p3d_handover[j], m_p3d_handover[j]]
-    return [round(ret[key][0], 2) for key in results_keys], right_hand_loss, under_10, under_15, under_20, under_30
+    return [round(ret[key][0], 2) for key in results_keys], right_hand_loss, under_10, under_15, under_20, under_30, accuracy, f1, f1_binary
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)

@@ -57,7 +57,8 @@ class HandoverDataset(data.Dataset):
         self._handover_files = self._get_handover_files()
 
         self.handover_motion_input_length = config.motion.handover_input_length
-        self.handover_motion_target_length = config.motion.handover_target_length
+        self.handover_motion_target_length = config.motion.handover_target_length_train
+        self.handover_motion_target_length_int = config.motion.handover_target_length_eval
 
         self.motion_dim = config.motion.dim
         self.shift_step = config.shift_step

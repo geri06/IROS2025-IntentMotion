@@ -31,6 +31,10 @@ class siMLPe(nn.Module):
         # Add Int conditioning
         self.int_cond = config.motion_int.int_cond
 
+        # Add Int classifier
+        self.use_int_class = config.use_int_class
+        self.pred_dim = config.motion.handover_target_length_train
+        self.flatten = config.classifier.flatten
 
         if self.temporal_fc_in:
             # if temporal_fc_in, Linear input and output with dimensions of dct matrix
@@ -70,6 +74,19 @@ class siMLPe(nn.Module):
         if self.int_cond:
             self.motion_int = nn.Embedding(self.config.motion_int.num_emb, self.config.motion_int.output_dim)
 
+        if self.use_int_class:
+            if self.flatten:
+                input_dim = self.config.motion.dim * self.config.motion.handover_target_length_train
+            else:
+                input_dim = self.config.motion.dim
+            self.int_classifier = nn.Sequential(
+                nn.Linear(input_dim, 128),
+                nn.ReLU(),  # Activation
+                nn.Linear(128, 64),
+                nn.ReLU(),  # Activation
+                nn.Linear(64, self.config.motion_int.num_emb)  # Output to number of intention classes
+            )
+
     def reset_parameters(self):
         """
         Initializes weights (xavier dist) and biases (init to 0) of fc_out
@@ -94,6 +111,7 @@ class siMLPe(nn.Module):
         # If we want to add ree context process it through motion_ree layer and concat
         if self.ree_cond:
             ree_feats = self.motion_ree(ree_input)
+            ree_feats = ree_feats.unsqueeze(1).repeat(1, self.config.motion.handover_input_length_dct, 1)
             motion_feats = self.arr1(motion_feats)
             # ree_feats = self.arr0(ree_feats)
 
@@ -108,14 +126,17 @@ class siMLPe(nn.Module):
 
         if self.int_cond:
             int_input = int_input.int()
-            #print("Intention input",int_input.shape)
             int_feats = self.motion_int(int_input)
+            int_feats = int_feats.unsqueeze(1).repeat(1,self.config.motion.handover_input_length_dct,1)
             int_feats = self.arr1(int_feats)
-            #print("Intention feats", int_feats.shape)
             motion_feats += int_feats
 
         # compute motion_feats with motion mlp (42 layers of MLP + LN)
         motion_feats = self.motion_mlp(motion_feats)
+
+        # if self.int_cond:
+        #     # we add again intention embedding
+        #     motion_feats += int_feats
 
         # process motion feats wit Linear before inverse dct
         if self.temporal_fc_out:
@@ -128,5 +149,16 @@ class siMLPe(nn.Module):
             motion_feats = self.arr1(motion_feats)
             motion_feats = self.motion_fc_out(motion_feats)
 
-        return motion_feats
+        if self.use_int_class:
+            #print(torch.flatten(motion_feats[:,:self.pred_dim,:],start_dim=1).shape)
+            if self.flatten:
+                int_class_logits = self.int_classifier(torch.flatten(motion_feats[:,:self.pred_dim,:],start_dim=1))  # Flatten dims 1 and 2 considering the 10 first predited frames
+            else:
+                int_class_logits = self.int_classifier(motion_feats[:,:self.pred_dim,:].mean(dim=1))  # Pooling along temporal dimension
+            int_predictions = torch.argmax(int_class_logits, dim=1)  # Convert logits to class indices
+        else:
+            int_class_logits = torch.empty(0)
+            int_predictions = torch.empty(0)
+
+        return motion_feats, int_class_logits, int_predictions
 

@@ -202,7 +202,7 @@ def visualize_data(folder_to_viz):
 if __name__ == '__main__':
 
     subject = "S7"
-    scenario = "straight"
+    scenario = "multiple_obstacles"
     folder_to_viz = f"./data/handover/{subject}/{scenario}"
     visualize_data(folder_to_viz)
 

@@ -12,6 +12,7 @@ import matplotlib.animation as animation
 from config  import config
 from lib.datasets.handover_eval import HandoverEvalDataset
 from model import siMLPe as Model
+from lib.utils.handover_functions import find_intentions_mode, get_dct_matrix
 
 """Code adapted from STSGCN Repo: https://github.com/FraLuca/STSGCN/blob/main/utils/h36_3d_viz.py"""
 
@@ -84,19 +85,6 @@ def create_ree(ax, plots, vals):
 
     return plots
 
-def get_dct_matrix(N):
-    """
-    Compute DCT and IDCT matrix with dim NxN to transform data
-    """
-    dct_m = np.eye(N)
-    for k in np.arange(N):
-        for i in np.arange(N):
-            w = np.sqrt(2 / N)
-            if k == 0:
-                w = np.sqrt(1 / N)
-            dct_m[k, i] = w * np.cos(np.pi * (i + 1 / 2) * k / N)
-    idct_m = np.linalg.inv(dct_m)
-    return dct_m, idct_m
 
 # create DCT with dimensions of input lenght data (50)
 dct_m,idct_m = get_dct_matrix(config.motion.handover_input_length_dct)
@@ -105,7 +93,6 @@ dct_m = torch.tensor(dct_m).float().cuda().unsqueeze(0)
 idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
 
 def data_to_viz(model, pbar, num_samples, n_viz):
-    import random
     """
     regress_pred() from test.py modified to return pred_data and gt_data
     """
@@ -141,14 +128,15 @@ def data_to_viz(model, pbar, num_samples, n_viz):
                         ree_motion_input_ = torch.empty(0)
 
                     if config.motion_int.int_cond:
-                        int_motion_input_ = int_motion_input.clone()
-                        int_motion_input_ = int_motion_input_.reshape(-1,config.motion.handover_input_length)
+                        int_motion_prediction_ = int_motion_target.clone()
+                        # select mode of the intention detected in the next 10 future frames
+                        int_motion_prediction_ = find_intentions_mode(int_motion_prediction_)
                     else:
-                        int_motion_input_ = torch.empty(0)
+                        int_motion_prediction_ = torch.empty(0)
                 else:
                     motion_input_ = motion_input.clone()
                     ree_motion_input_ = torch.empty(0)
-                output = model(motion_input_, ree_motion_input_, int_motion_input_.cuda())
+                output = model(motion_input_, ree_motion_input_, int_motion_prediction_.cuda())
                 # transform output using idct_m for the rows of, handover_input_length. Then we slice to extract the first step frames of the result.
                 output = torch.matmul(idct_m[:, :config.motion.handover_input_length, :], output)[:, :step, :]
                 # if deriv output
@@ -220,7 +208,7 @@ def data_to_viz(model, pbar, num_samples, n_viz):
         ax.set_zlim3d([0.0, 1.5])
         ax.set_zlabel('Z')
 
-        ax.set_title('mean loss in mm is: ' + str(round(mpjpe_p3d_h36[-1].item(), 4)) + ' with intention : ' + str(sum(int_motion_input[i,:]).item()) + ' for ' + str(
+        ax.set_title('mean loss in mm is: ' + str(round(mpjpe_p3d_h36[-1].item(), 4)) + ' with intention : ' + str(int_motion_prediction_[i].item()) + ' for ' + str(
             25) + ' frames')
 
         line_anim = animation.FuncAnimation(fig, update, 25, fargs=(data_gt, data_pred, ree_data, gt_plots, pred_plots, ree_plot,
