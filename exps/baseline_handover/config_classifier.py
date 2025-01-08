@@ -165,7 +165,7 @@ C.actions_to_load = "all" # add actions between brackets: ["walking", "smoking"]
 
 """Display Config"""
 C.print_every = 250
-C.save_every = 2500
+C.save_every = 5000
 C.viz_GCN_folder = C.motion_gcn_out.gcn_out
 
 if __name__ == '__main__':

@@ -316,7 +316,8 @@ def update(num, data_gt, data_pred, ree_data ,plots_gt, plots_pred,ree_plot,fig,
 
     ### ----- Create visualization of data and prediction ----
 if __name__ == '__main__':
-    model_path = "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/snapshot/model-iter-5000.pth"
+    # model_path = "/home/gerard/Documents/IRI/Repos/siMLPe/checkpoints/keypoints_predictor_v1.pth"
+    model_path = "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/snapshot/model-iter-3500.pth"
     model = Model(config)
     config.motion.handover_target_length = config.motion.handover_target_length_eval
     state_dict = torch.load(model_path)
@@ -324,10 +325,10 @@ if __name__ == '__main__':
     model.eval()
     model.cuda()
     #visualize(args.model_pth,5)
-    sample_path = "/home/gerard/Documents/IRI/Repos/siMLPe/data/handover/S7/multiple_obstacles/right_outer_natural.txt"
+    sample_path = "/home/gerard/Documents/IRI/Repos/siMLPe/data/handover/S7/multiple_obstacles/left_inner_natural.txt"
     # define input data
     input_motion_data, input_ree_data, input_int_data, gt_motion_data, gt_ree_data, gt_int_data = get_data(sample_path)
-    forced_intention = 3
+    forced_intention = 0
 
     # do the prediction
     data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36 = predict(model, input_motion_data, gt_motion_data, input_ree_data, gt_ree_data, gt_int_data, forced_intention)

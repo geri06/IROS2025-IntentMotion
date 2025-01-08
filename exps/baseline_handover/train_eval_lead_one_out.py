@@ -81,7 +81,7 @@ def subject_splits():
 
 
 ### ------------ Training with cross validation ------------- ###
-metrics = {"L2_body": [], "L2_right_hand":[], "under_0.10m":[], "under_0.15m":[],"under_0.20m":[], "under_0.30m":[], "accuracy":[], "f1_score":[]}
+metrics = {"L2_body": [], "L2_right_hand":[], "under_0.10m":[], "under_0.15m":[],"under_0.20m":[], "under_0.30m":[], "accuracy":[], "f1_score":[], "f1_score_binary":[]}
 
 # crete logger and stuff to add log files with config and info
 
@@ -196,6 +196,7 @@ for split in splits:
                 print("% Under 30", round(under_30, 3))
                 print("% Accuracy", round(accuracy, 3))
                 print("% F1 score", round(f1, 3))
+                print("% F1 score Binary", round(f1_binary, 3))
                 writer.add_scalar('Body Test Loss', avg_l2_body_loss, nb_iter)
                 print_and_log_info(logger, f"\t Body Test loss: {avg_l2_body_loss}")
                 writer.add_scalar('RH Test Loss', avg_rh_loss, nb_iter)
@@ -240,6 +241,7 @@ for split in splits:
                 metrics["under_0.30m"].append(under_30)
                 metrics["accuracy"].append(accuracy)
                 metrics["f1_score"].append(f1)
+                metrics["f1_score_binary"].append(f1_binary)
                 break
             nb_iter += 1
 
@@ -253,5 +255,6 @@ print_and_log_info(logger, "Under 0.20 is {}".format(sum(metrics["under_0.20m"])
 print_and_log_info(logger, "Under 0.30 is {}".format(sum(metrics["under_0.30m"])/len(metrics["under_0.30m"])))
 print_and_log_info(logger, "Intention Accuracy is {}".format(sum(metrics["accuracy"])/len(metrics["accuracy"])))
 print_and_log_info(logger, "F1 Score is {}".format(sum(metrics["f1_score"])/len(metrics["f1_score"])))
+print_and_log_info(logger, "F1 Score Binary is {}".format(sum(metrics["f1_score_binary"])/len(metrics["f1_score_binary"])))
 
 print_and_log_info(logger, "Metrics are {}".format(metrics))

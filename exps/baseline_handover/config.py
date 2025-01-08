@@ -62,8 +62,8 @@ C.deriv_output = True
 C.use_relative_loss = True
 C.use_relative_loss_rh = False
 C.use_rh_loss = False
-C.use_ree_loss = False
-C.use_rh_distance_joints_loss = False
+C.use_ree_loss = True
+C.use_rh_distance_joints_loss = True
 
 ## Loss layer
 C.use_loss_layer = False
@@ -133,14 +133,14 @@ C.motion_ree.embedding_size = 3 # set to 27 in case ree_sum is True
 
 # Motion Network Int
 C.motion_int = edict()
-C.motion_int.int_cond = True
+C.motion_int.int_cond = False
 
 C.motion_int.input_dim = 1
 C.motion_int.num_emb = 5
 C.motion_int.output_dim = 27 # set to 27 in case we sum int embedding
 
 # Intention classifier
-C.use_int_class = False
+C.use_int_class = True
 C.classifier = edict()
 C.classifier.flatten = True
 C.only_classification = False
@@ -152,8 +152,8 @@ C.num_workers = 6
 C.cosine_lr = True
 C.cos_lr_max=1e-2
 C.cos_lr_min=1e-5
-C.cos_lr_total_iters=5000
-C.total_iters=5000
+C.cos_lr_total_iters=3500
+C.total_iters=3500
 
 C.weight_decay = 1e-4
 C.model_pth = None
@@ -165,7 +165,7 @@ C.actions_to_load = "all" # add actions between brackets: ["walking", "smoking"]
 
 """Display Config"""
 C.print_every = 250
-C.save_every = 2500
+C.save_every = 3500
 C.viz_GCN_folder = C.motion_gcn_out.gcn_out
 
 if __name__ == '__main__':

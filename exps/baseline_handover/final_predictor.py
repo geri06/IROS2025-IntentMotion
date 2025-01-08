@@ -340,7 +340,7 @@ if __name__ == '__main__':
     keypoints_predictor.eval()
     keypoints_predictor.cuda()
 
-    sample_path = "/home/gerard/Documents/IRI/Repos/siMLPe/data/handover/S7/straight/right_nd.txt"
+    sample_path = "/home/gerard/Documents/IRI/Repos/siMLPe/data/handover/S7/multiple_obstacles/left_inner_natural.txt"
     # define input data
     input_motion_data, input_ree_data, input_int_data, gt_motion_data, gt_ree_data, gt_int_data = get_data(sample_path)
     forced_intention = None

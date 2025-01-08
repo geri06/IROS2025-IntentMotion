@@ -3,6 +3,7 @@ import os, sys
 from scipy.spatial.transform import Rotation as R
 
 import numpy as np
+from config_classifier  import config_classifier
 from config  import config
 from model import siMLPe as Model
 from datasets.handover_eval import HandoverEvalDataset
@@ -16,6 +17,7 @@ from torch.utils.data import DataLoader
 
 from sklearn.metrics import f1_score
 
+# config = config_classifier # Use when testing the classifier
 
 results_keys = ['#1','#2', '#3','#4', '#5', '#6', '#7','#8', '#9','#10', '#11', '#12', '#13', '#14', '#15', '#16', '#17', '#18', '#19', '#20', '#21', '#22', '#23', '#24', '#25']
 

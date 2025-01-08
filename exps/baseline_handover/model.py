@@ -134,6 +134,10 @@ class siMLPe(nn.Module):
         # compute motion_feats with motion mlp (42 layers of MLP + LN)
         motion_feats = self.motion_mlp(motion_feats)
 
+        # if self.int_cond:
+        #     # we add again intention embedding
+        #     motion_feats += int_feats
+
         # process motion feats wit Linear before inverse dct
         if self.temporal_fc_out:
             motion_feats = self.motion_fc_out(motion_feats)

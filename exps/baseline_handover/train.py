@@ -9,6 +9,10 @@ from fontTools.misc.bezierTools import epsilon
 from torch.nn import CrossEntropyLoss
 
 from config import config
+from config_classifier import config_classifier
+if config.use_int_class:
+    config = config_classifier
+    print("Training Classifier...")
 from model import siMLPe as Model
 from datasets.handover import HandoverDataset
 from utils.logger import get_logger, print_and_log_info
@@ -216,7 +220,7 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
         if config.only_classification:
             total_loss = ce_loss
         else:
-            total_loss = total_loss*0.05 + ce_loss*0.95
+            total_loss = total_loss*0.1 + ce_loss*0.9
 
     # Save loss value to be able to visualize in tensorboard
     writer.add_scalar('Loss/angle', total_loss.detach().cpu().numpy(), nb_iter)
