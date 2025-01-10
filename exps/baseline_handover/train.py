@@ -111,7 +111,10 @@ def filter_collaboration_samples(int_motion,batch_intentions):
     batch_collaborative_indexes = []
     # Check each batch in the tensor
     for batch_idx in range(len(batch_intentions)):
-        if batch_intentions[batch_idx] == 0:
+        if config.use_colab_loss:
+            if batch_intentions[batch_idx] == 0:
+                batch_collaborative_indexes.append(batch_idx)
+        else:
             batch_collaborative_indexes.append(batch_idx)
     return batch_collaborative_indexes
 
@@ -174,7 +177,7 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
         if config.use_relative_loss_rh:
             # focus to improve right hand velocity
             dloss_rh = torch.mean(torch.norm((dmotion_pred[:,:,[5],:] - dmotion_gt[:,:,[5],:]).reshape(-1,3), 2, 1))
-            total_loss += 0.5*dloss_rh
+            total_loss += dloss_rh
 
     if config.use_rh_loss:
         # Compute L2 between only Right Hand to see if adding more weight predictions improve
@@ -183,7 +186,7 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
         right_hand_gt = motion_gt[:, :, 5, :]
         right_hand_pred = motion_pred[:, :, 5, :]
         rhloss = torch.mean(torch.mean(torch.norm(right_hand_pred - right_hand_gt, dim=2), dim=1), dim = 0)
-        total_loss += rhloss
+        total_loss += 0.5*rhloss
 
 
     if config.use_ree_loss:
@@ -208,7 +211,7 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
             gt_dist = gen_rh_distance_to_joints(motion_gt_collab)
             #print("PRED AND GT DIST", pred_dist.shape, gt_dist.shape)
             distance_joints_loss = torch.mean(abs(gt_dist-pred_dist),dim= [0,1,2])
-            total_loss += 0.01*reeloss + 0.5*distance_joints_loss
+            total_loss += 0.05*reeloss + 0.95*distance_joints_loss
         else:
             total_loss += 0.01 * reeloss
 

@@ -99,7 +99,16 @@ class HandoverDataset(data.Dataset):
                 # load only data with intention label
                 if len(line) == 137:
                     line = np.array(line)[self._points_to_load.astype(int)]
+                    # if binary intention
+                    if config.motion_int.binary:
+                        # replace intention 1 and 4 with 0
+                        if line[-1] == '1' or line[-1] == '4':
+                            line[-1] = '0'
+                        # replace intention 2 and 3 with 1
+                        elif line[-1] == '2' or line[-1] == '3':
+                            line[-1] = '1'
                     the_sequence.append(np.array([float(x) for x in line]))
+
 
             # pose_info is a list of np arrays
             the_sequence = np.array(the_sequence)
@@ -167,9 +176,10 @@ class HandoverDataset(data.Dataset):
 
         # Intention data
         int_idx = [30]
-        int_motion = all_motion[:, int_idx] # canviar per self.int_idx coordinates de config
+        int_motion = all_motion[:, int_idx]
         int_motion_input = int_motion[:self.handover_motion_input_length]
         int_motion_target = int_motion[self.handover_motion_input_length:]
+
         int_motion_input = int_motion_input.float()
         int_motion_target = int_motion_target.float()
 
@@ -194,5 +204,5 @@ class HandoverDataset(data.Dataset):
 if __name__ == "__main__":
     config.motion.handover_target_length = config.motion.handover_target_length_train
     dataset = HandoverDataset(config, 'train', config.data_aug)
-    motion_input, motion_target, ree_input, ree_target, int_input, int_target = dataset[5]
+    motion_input, motion_target, ree_input, ree_target, int_input, int_target = dataset[0]
     print(motion_input.shape, motion_target.shape, ree_input.shape, ree_target.shape, int_input.shape, int_target.shape)

@@ -97,6 +97,14 @@ class HandoverEvalDataset(data.Dataset):
                 # load only data with intention label
                 if len(line) == 137:
                     line = np.array(line)[self._points_to_load.astype(int)]
+                    # if binary intention
+                    if config.motion_int.binary:
+                        # replace intention 1 and 4 with 0
+                        if line[-1] == '1' or line[-1] == '4':
+                            line[-1] = '0'
+                        # replace intention 2 and 3 with 1
+                        elif line[-1] == '2' or line[-1] == '3':
+                            line[-1] = '1'
                     the_sequence.append(np.array([float(x) for x in line]))
             # pose_info is a list of np arrays
             the_sequence = np.array(the_sequence)
@@ -165,9 +173,10 @@ class HandoverEvalDataset(data.Dataset):
 
         # Intention data
         int_idx = [30]
-        int_motion = all_motion[:, int_idx]  # canviar per self.int_idx coordinates de config
+        int_motion = all_motion[:, int_idx]
         int_motion_input = int_motion[:self.handover_motion_input_length]
         int_motion_target = int_motion[self.handover_motion_input_length:]
+
         int_motion_input = int_motion_input.float()
         int_motion_target = int_motion_target.float()
 
