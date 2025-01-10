@@ -60,10 +60,15 @@ C.deriv_input = True
 # Apply an offset correction to output
 C.deriv_output = True
 C.use_relative_loss = True
+
+# RH losses
 C.use_relative_loss_rh = False
 C.use_rh_loss = False
-C.use_ree_loss = True
+
+# Special loss
+C.use_ree_loss = False
 C.use_rh_distance_joints_loss = True
+C.use_colab_loss = True
 
 ## Loss layer
 C.use_loss_layer = False
@@ -123,7 +128,7 @@ C.motion_gcn_out.gcn_out = False
 C.motion_ree = edict()
 C.motion_ree.input_dim = 3
 C.motion_ree.ree_cond = False
-C.motion_ree.ree_concatenation = False
+C.motion_ree.ree_concatenation = True
 C.motion_ree.gcn_concatenation = False
 C.motion_ree.gcn_do = 0
 C.motion_ree.gcn_num_stage = 0
@@ -134,13 +139,13 @@ C.motion_ree.embedding_size = 3 # set to 27 in case ree_sum is True
 # Motion Network Int
 C.motion_int = edict()
 C.motion_int.int_cond = False
-
 C.motion_int.input_dim = 1
-C.motion_int.num_emb = 5
+C.motion_int.num_emb = 2
 C.motion_int.output_dim = 27 # set to 27 in case we sum int embedding
+C.motion_int.binary = True
 
 # Intention classifier
-C.use_int_class = True
+C.use_int_class = False
 C.classifier = edict()
 C.classifier.flatten = True
 C.only_classification = False
@@ -152,8 +157,8 @@ C.num_workers = 6
 C.cosine_lr = True
 C.cos_lr_max=1e-2
 C.cos_lr_min=1e-5
-C.cos_lr_total_iters=3500
-C.total_iters=3500
+C.cos_lr_total_iters=5000
+C.total_iters=5000
 
 C.weight_decay = 1e-4
 C.model_pth = None
@@ -165,7 +170,7 @@ C.actions_to_load = "all" # add actions between brackets: ["walking", "smoking"]
 
 """Display Config"""
 C.print_every = 250
-C.save_every = 3500
+C.save_every = 5000
 C.viz_GCN_folder = C.motion_gcn_out.gcn_out
 
 if __name__ == '__main__':
