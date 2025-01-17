@@ -186,7 +186,7 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
         right_hand_gt = motion_gt[:, :, 5, :]
         right_hand_pred = motion_pred[:, :, 5, :]
         rhloss = torch.mean(torch.mean(torch.norm(right_hand_pred - right_hand_gt, dim=2), dim=1), dim = 0)
-        total_loss += 0.5*rhloss
+        total_loss += rhloss
 
 
     if config.use_ree_loss:
@@ -223,7 +223,7 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
         if config.only_classification:
             total_loss = ce_loss
         else:
-            total_loss = total_loss*0.1 + ce_loss*0.9
+            total_loss += ce_loss
 
     # Save loss value to be able to visualize in tensorboard
     writer.add_scalar('Loss/angle', total_loss.detach().cpu().numpy(), nb_iter)
