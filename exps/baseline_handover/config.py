@@ -62,7 +62,7 @@ C.deriv_output = True
 C.use_relative_loss = True
 
 # RH losses
-C.use_relative_loss_rh = False
+C.use_relative_loss_rh = True
 C.use_rh_loss = False
 
 # Special loss
@@ -138,11 +138,12 @@ C.motion_ree.embedding_size = 3 # set to 27 in case ree_sum is True
 
 # Motion Network Int
 C.motion_int = edict()
-C.motion_int.int_cond = False
+C.motion_int.int_cond = True
 C.motion_int.input_dim = 1
 C.motion_int.num_emb = 2 # set to 2 if binary intention
 C.motion_int.output_dim = 27 # to match model dim
 C.motion_int.binary = True
+C.eval_condition_with_classifier_int = True # evaluates model with intention predicted by int_classifier, if False real target intention will be used to condition prediction.
 
 # Intention classifier
 C.use_int_class = False
