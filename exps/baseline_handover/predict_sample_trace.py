@@ -16,7 +16,7 @@ from lib.utils.handover_functions import find_intentions_mode, get_dct_matrix
 
 """Code adapted from STSGCN Repo: https://github.com/FraLuca/STSGCN/blob/main/utils/h36_3d_viz.py"""
 
-def create_pose(ax, plots, vals, pred=True, update=False):
+def create_pose(ax, plots, vals, pred=True):
     # handover 32 joints(full)
     connect = [
         (0, 1),  # nose to left shoulder
@@ -57,29 +57,76 @@ def create_pose(ax, plots, vals, pred=True, update=False):
         # Debugging print to check the values
         #print(f"Updating line {i}: x={x}, y={y}, z={z}")
 
-        if not update:
-            if i == 0:
-                plots.append(ax.plot(x, y, z, lw=2, linestyle='--', c=lcolor if LR[i] else rcolor,
-                                     label=['GT' if not pred else 'Pred']))
-            else:
-                plots.append(ax.plot(x, y, z, lw=2, linestyle='--', c=lcolor if LR[i] else rcolor))
+        if i == 0:
+            plots.append(ax.plot(x, y, z, lw=2, linestyle='--', c=lcolor if LR[i] else rcolor,
+                                 label=['GT' if not pred else 'Pred']))
+        else:
+            plots.append(ax.plot(x, y, z, lw=2, linestyle='--', c=lcolor if LR[i] else rcolor))
 
-        elif update:
-            plots[i][0].set_xdata(x)
-            plots[i][0].set_ydata(y)
-            plots[i][0].set_3d_properties(z)
-            plots[i][0].set_color(lcolor if LR[i] else rcolor)
 
     return plots
 
+def create_pose_with_history(ax, plots, frame_vals, history, pred=True):
+    """
+    Crea o actualiza una pose con historial de frames predichos acumulados.
+    """
+    connect = [
+        (0, 1), (0, 2), (1, 2), (1, 3), (2, 4),
+        (3, 5), (4, 6), (1, 7), (2, 8), (7, 8)
+    ]
+    LR = [
+        True, False, True, False, True,
+        False, True, False, True
+    ]
+    I = np.array([touple[0] for touple in connect])
+    J = np.array([touple[1] for touple in connect])
+    LR = np.array([LR[a] or LR[b] for a, b in connect])
+
+    history_color = "#8e8e8e"
+    # Agregar el frame actual al historial
+    history.append(frame_vals)
+    if len(history)==27:
+        alpha = 1
+        for i in range(len(I)):
+            x = np.array([frame_vals[I[i], 0], frame_vals[J[i], 0]])
+            y = np.array([frame_vals[I[i], 1], frame_vals[J[i], 1]])
+            z = np.array([frame_vals[I[i], 2], frame_vals[J[i], 2]])
+
+            if i == 5:
+                plots.append(
+                    ax.plot(x, y, z, lw=1, linestyle='--',
+                            c= "green", alpha=alpha)
+                )
+            else:
+                plots.append(
+                    ax.plot(x, y, z, lw=1, linestyle='--',
+                            c=history_color, alpha=alpha)
+                )
+    elif len(history)%3 == 0:
+        alpha = 0.5
+        for i in range(len(I)):
+            x = np.array([frame_vals[I[i], 0], frame_vals[J[i], 0]])
+            y = np.array([frame_vals[I[i], 1], frame_vals[J[i], 1]])
+            z = np.array([frame_vals[I[i], 2], frame_vals[J[i], 2]])
+            if i == 5:
+                plots.append(
+                    ax.plot(x, y, z, lw=1, linestyle='--',
+                            c= "green", alpha=alpha)
+                )
+            else:
+                plots.append(
+                    ax.plot(x, y, z, lw=1, linestyle='--',
+                            c=history_color, alpha=alpha)
+                )
+    return plots, history
+
 def create_ree(ax, plots, vals):
-    lcolor = "#8e8e8e"
     x = vals[0]
     y = vals[1]
     z = vals[2]
 
     if len(plots) == 0:
-        plots.append((ax.scatter([x], [y], [z], color=lcolor, s=50)))
+        plots.append((ax.scatter([x], [y], [z], color="green", s=10)))
     else:
         plots[0]._offsets3d = ([x], [y], [z])
 
@@ -241,47 +288,6 @@ def predict(model,motion_input, motion_target, ree_motion_input, ree_motion_targ
     print(data_pred.shape, data_gt.shape, ree_data.shape, intention_data)
     return data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36
 
-def viz_prediction(data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36, subject_info):
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.view_init(elev=20, azim=70)
-    vals = np.zeros((9, 3))  # or joints_to_consider
-    ree_vals = np.zeros(3)
-    gt_plots = []
-    pred_plots = []
-    ree_plots = []
-
-    gt_plots = create_pose(ax, gt_plots, vals, pred=False, update=False)
-    pred_plots = create_pose(ax, pred_plots, vals, pred=True, update=False)
-    ree_plot = create_ree(ax, ree_plots, ree_vals)
-
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("z")
-    ax.legend(loc='lower left')
-
-    ax.set_xlim3d([-1, 1.5])
-    ax.set_xlabel('X')
-
-    ax.set_ylim3d([-1, 1.5])
-    ax.set_ylabel('Y')
-
-    ax.set_zlim3d([0.0, 1.5])
-    ax.set_zlabel('Z')
-
-    ax.set_title('mean loss in mm is: ' + str(round(torch.mean(mpjpe_p3d_h36).item(), 3)) + ' with intention : ' + str(
-        intention_data) + ' for ' + str(
-        25) + ' frames')
-
-    line_anim = animation.FuncAnimation(fig, update, 25,
-                                        fargs=(data_gt, data_pred, ree_data, gt_plots, pred_plots, ree_plot,
-                                               fig, ax), interval=70, blit=False)
-    plt.show()
-
-    line_anim.save('/home/gerard/Documents/IRI/Repos/siMLPe/visualizations/S7/{}.gif'.format(subject_info), writer='pillow')
-    print(subject_info)
-
 # ax.legend(loc='lower left')
 
 
@@ -295,13 +301,19 @@ def set_root(data_gt):
     xroot, yroot, zroot = gt_vals[0, 0], gt_vals[0, 1], gt_vals[0, 2]
     return xroot, yroot, zroot
 
-def update(num, data_gt, data_pred, ree_data ,plots_gt, plots_pred,ree_plot,fig, ax):
+def update_with_history(num, data_gt, data_pred, ree_data, plots_pred, ree_plot, fig, ax, history):
+    """
+    Actualiza la animación manteniendo un historial de todos los frames predichos.
+    """
+
+
     gt_vals = data_gt[num]
     pred_vals = data_pred[num]
     ree_vals = ree_data[num]
-    plots_gt = create_pose(ax, plots_gt, gt_vals, pred=False, update=True)
-    plots_pred = create_pose(ax, plots_pred, pred_vals, pred=True, update=True)
-    ree_plot = create_ree(ax,ree_plot,ree_vals)
+
+    # Acumular las poses predichas en el historial
+    plots_pred, history = create_pose_with_history(ax, plots_pred, pred_vals, history, pred=True)
+    ree_plot = create_ree(ax, ree_plot, ree_vals)
 
     r = 1
     xroot, yroot, zroot = set_root(data_gt)
@@ -309,10 +321,74 @@ def update(num, data_gt, data_pred, ree_data ,plots_gt, plots_pred,ree_plot,fig,
     ax.set_ylim3d([-r + yroot, r + yroot])
     ax.set_zlim3d([-r + zroot, r + zroot])
 
-    # ax.set_title('pose at time frame: '+str(num))
-    # ax.set_aspect('equal')
+    # Guardar el último frame si es el último número
+    if num == len(data_gt)-1:
+        save_path = "/home/gerard/Documents/IRI/Repos/siMLPe/visualizations/S7/last_frame.png"
+        fig.savefig(save_path, dpi = 900)
+        print(f"Último frame guardado en {save_path}")
 
-    return plots_gt, plots_pred, ree_plot
+    return plots_pred, ree_plot, history
+
+
+
+
+def viz_prediction_with_history(data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36, subject_info):
+    """
+    Visualiza la predicción acumulando los frames predichos.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.view_init(elev=10, azim=110)
+    vals = np.zeros((9, 3))  # o joints_to_consider
+    ree_vals = np.zeros(3)
+    gt_plots = []
+    pred_plots = []
+    ree_plots = []
+
+    # Historial de predicciones
+    history = []
+
+    pred_plots = create_pose(ax, pred_plots, vals, pred=True)
+    ree_plot = create_ree(ax, ree_plots, ree_vals)
+
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("z")
+    #ax.legend(loc='lower left')
+
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    ax.set_zticklabels([])
+
+    ax.set_xlim3d([-1, 1.5])
+    ax.set_xlabel('X')
+
+    ax.set_ylim3d([-1, 1.5])
+    ax.set_ylabel('Y')
+
+    ax.set_zlim3d([0.0, 1.5])
+    ax.set_zlabel('Z')
+
+    ax.set_title('mean loss in mm is: ' + str(round(torch.mean(mpjpe_p3d_h36).item(), 3)) +
+                 ' with intention : ' + str(intention_data) + ' for ' + str(25) + ' frames')
+
+    line_anim = animation.FuncAnimation(
+        fig, update_with_history, 25,
+        fargs=(data_gt, data_pred, ree_data, pred_plots, ree_plot, fig, ax, history),
+        interval=140, blit=False
+    )
+
+    # Show and save the animation
+    plt.show()
+    save_path = f'/home/gerard/Documents/IRI/Repos/siMLPe/visualizations/S7/{subject_info}.gif'
+    line_anim.save(save_path, writer='pillow')
+    print(f"Animation saved at {save_path}")
+
+
+# Example usage:
+# viz_prediction_highlight(data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36, "subject_test")
+
+
 
     ### ----- Create visualization of data and prediction ----
 if __name__ == '__main__':
@@ -339,7 +415,7 @@ if __name__ == '__main__':
     subject_info = "_".join(remaining_path.split("/")[:2]).rsplit(".", 1)[0] + f"_{int(intention_data)}"
 
     # call visualization function
-    viz_prediction(data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36, subject_info)
-
-
-
+    viz_prediction_with_history(data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36, subject_info)
+    # print("data_pred shape",data_pred.shape)
+    # print("ree_data shape", ree_data.shape)
+    # plot_static_motion(data_pred, ree_data)
