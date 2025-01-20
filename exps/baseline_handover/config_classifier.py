@@ -60,12 +60,14 @@ C.deriv_input = True
 # Apply an offset correction to output
 C.deriv_output = True
 C.use_relative_loss = True
+
+# RH losses
 C.use_relative_loss_rh = False
 C.use_rh_loss = False
 
 # Special loss
-C.use_ree_loss = True
-C.use_rh_distance_joints_loss = True
+C.use_ree_loss = False
+C.use_rh_distance_joints_loss = False
 C.use_colab_loss = False
 
 ## Loss layer
@@ -172,4 +174,4 @@ C.save_every = 5000
 C.viz_GCN_folder = C.motion_gcn_out.gcn_out
 
 if __name__ == '__main__':
-    print(config.decoder.motion_mlp)
+    print(config_classifier.decoder.motion_mlp)
