@@ -66,14 +66,14 @@ dct_m,idct_m = get_dct_matrix(config.motion.handover_input_length_dct)
 dct_m = torch.tensor(dct_m).float().cuda().unsqueeze(0)
 idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
 
-def update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer) :
+def update_lr_multistep(nb_iter, optimizer) :
     """
     Reduce learning rate to min_lr after 30000 iterations
     """
-    if nb_iter > 20000:
-        current_lr = 1e-5
+    if nb_iter > 30000:
+        current_lr = 5e-8
     else:
-        current_lr = 3e-4
+        current_lr = 1e-5
 
     for param_group in optimizer.param_groups:
         param_group["lr"] = current_lr
@@ -241,7 +241,8 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
         current_lr = optimizer.param_groups[0]["lr"]
         if config.cosine_lr:
             scheduler.step()
-    # optimizer, current_lr = update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer)
+        else:
+            optimizer, current_lr = update_lr_multistep(nb_iter, optimizer)
     # Save current lr to tensorboard
     writer.add_scalar('LR/train', current_lr, nb_iter)
 
@@ -333,7 +334,7 @@ while (nb_iter + 1) < config.total_iters:
         if (nb_iter + 1) % config.eval_every == 0 :
             model.eval()
             # calc loss in all timeframes
-            acc_tmp, rh_loss, under_10, under_15, under_20, under_30, accuracy, f1, f1_binary = test(eval_config, model, eval_dataloader)
+            acc_tmp, rh_loss, under_10, under_15, under_20, under_30, under_35, under_40, accuracy, f1, f1_binary = test(eval_config, model, eval_dataloader)
             avg_rh_loss = np.mean(np.array(rh_loss))
             avg_l2_body_loss = np.mean(np.array(acc_tmp))  # mean of all time frames
             print("Iteration:",nb_iter)
@@ -363,7 +364,7 @@ while (nb_iter + 1) < config.total_iters:
             # eval model
             model.eval()
             # calc loss
-            acc_tmp, rh_loss,_,_,_,_,_,_,_ = test(eval_config, model, eval_dataloader)
+            acc_tmp, rh_loss,_,_,_,_,_,_,_,_,_ = test(eval_config, model, eval_dataloader)
             print("Body loss values", acc_tmp)
             print("RH loss values", rh_loss)
             acc_log.write(''.join(str(nb_iter + 1) + '\n'))

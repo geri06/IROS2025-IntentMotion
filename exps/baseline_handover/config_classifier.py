@@ -147,7 +147,7 @@ C.motion_int.binary = True
 # Intention classifier
 C.use_int_class = True
 C.classifier = edict()
-C.classifier.flatten = True
+C.classifier.flatten = False
 C.only_classification = False
 
 """Train Config"""

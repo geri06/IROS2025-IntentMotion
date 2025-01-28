@@ -81,7 +81,7 @@ def subject_splits():
 
 
 ### ------------ Training with cross validation ------------- ###
-metrics = {"L2_body": [], "L2_right_hand":[], "under_0.10m":[], "under_0.15m":[],"under_0.20m":[], "under_0.30m":[], "accuracy":[], "f1_score":[], "f1_score_binary":[]}
+metrics = {"L2_body": [], "L2_right_hand":[], "under_0.10m":[], "under_0.15m":[],"under_0.20m":[], "under_0.30m":[], "under_0.35m":[], "under_0.40m":[],"accuracy":[], "f1_score":[], "f1_score_binary":[]}
 
 # crete logger and stuff to add log files with config and info
 
@@ -183,7 +183,7 @@ for split in splits:
             if (nb_iter + 1) % config.eval_every == 0:
                 model.eval()
                 # calc loss in all timeframes
-                acc_tmp, rh_loss, under_10, under_15, under_20, under_30, accuracy, f1, f1_binary = test(eval_config, model,
+                acc_tmp, rh_loss, under_10, under_15, under_20, under_30, under_35, under_40, accuracy, f1, f1_binary = test(eval_config, model,
                                                                                               eval_dataloader)
                 avg_rh_loss = np.mean(np.array(rh_loss))
                 avg_l2_body_loss = np.mean(np.array(acc_tmp))  # mean of all time frames
@@ -194,6 +194,8 @@ for split in splits:
                 print("% Under 15", round(under_15, 3))
                 print("% Under 20", round(under_20, 3))
                 print("% Under 30", round(under_30, 3))
+                print("% Under 35", round(under_35, 3))
+                print("% Under 40", round(under_40, 3))
                 print("% Accuracy", round(accuracy, 3))
                 print("% F1 score", round(f1, 3))
                 print("% F1 score Binary", round(f1_binary, 3))
@@ -214,7 +216,7 @@ for split in splits:
                 # eval model
                 model.eval()
                 # calc loss
-                acc_tmp, rh_loss, _, _, _, _, _, _,_ = test(eval_config, model, eval_dataloader)
+                acc_tmp, rh_loss, _, _, _, _, _, _,_,_,_ = test(eval_config, model, eval_dataloader)
                 print("Body loss values", acc_tmp)
                 print("RH loss values", rh_loss)
                 acc_log.write(''.join(str(nb_iter + 1) + '\n'))
@@ -239,6 +241,8 @@ for split in splits:
                 metrics["under_0.15m"].append(under_15)
                 metrics["under_0.20m"].append(under_20)
                 metrics["under_0.30m"].append(under_30)
+                metrics["under_0.35m"].append(under_35)
+                metrics["under_0.40m"].append(under_40)
                 metrics["accuracy"].append(accuracy)
                 metrics["f1_score"].append(f1)
                 metrics["f1_score_binary"].append(f1_binary)
@@ -253,6 +257,8 @@ print_and_log_info(logger, "Under 0.10 is {}".format(sum(metrics["under_0.10m"])
 print_and_log_info(logger, "Under 0.15 is {}".format(sum(metrics["under_0.15m"])/len(metrics["under_0.15m"])))
 print_and_log_info(logger, "Under 0.20 is {}".format(sum(metrics["under_0.20m"])/len(metrics["under_0.20m"])))
 print_and_log_info(logger, "Under 0.30 is {}".format(sum(metrics["under_0.30m"])/len(metrics["under_0.30m"])))
+print_and_log_info(logger, "Under 0.35 is {}".format(sum(metrics["under_0.35m"])/len(metrics["under_0.35m"])))
+print_and_log_info(logger, "Under 0.40 is {}".format(sum(metrics["under_0.40m"])/len(metrics["under_0.40m"])))
 print_and_log_info(logger, "Intention Accuracy is {}".format(sum(metrics["accuracy"])/len(metrics["accuracy"])))
 print_and_log_info(logger, "F1 Score is {}".format(sum(metrics["f1_score"])/len(metrics["f1_score"])))
 print_and_log_info(logger, "F1 Score Binary is {}".format(sum(metrics["f1_score_binary"])/len(metrics["f1_score_binary"])))

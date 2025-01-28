@@ -13,10 +13,12 @@ def L2_right_hand(motion_gt, motion_pred):
 
 def quality_metrics(motion_gt, motion_pred):
     dist_tensor = torch.mean(torch.mean(torch.norm(motion_pred - motion_gt, dim=3), dim=2), dim=0)
-    under_30 = (dist_tensor < 0.3).float().mean()
-    under_20 = (dist_tensor < 0.2).float().mean()
-    under_15 = (dist_tensor < 0.15).float().mean()
-    under_10 = (dist_tensor < 0.1).float().mean()
+    under_40 = (dist_tensor <= 0.4).float().mean()
+    under_35 = (dist_tensor <= 0.35).float().mean()
+    under_30 = (dist_tensor <= 0.3).float().mean()
+    under_20 = (dist_tensor <= 0.2).float().mean()
+    under_15 = (dist_tensor <= 0.15).float().mean()
+    under_10 = (dist_tensor <= 0.1).float().mean()
 
 
-    return under_10,under_15,under_20,under_30
+    return under_10,under_15,under_20,under_30,under_35,under_40

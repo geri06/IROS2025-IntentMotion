@@ -62,13 +62,13 @@ C.deriv_output = True
 C.use_relative_loss = True
 
 # RH losses
-C.use_relative_loss_rh = True
+C.use_relative_loss_rh = False
 C.use_rh_loss = False
 
 # Special loss
 C.use_ree_loss = False
-C.use_rh_distance_joints_loss = True
-C.use_colab_loss = True
+C.use_rh_distance_joints_loss = False
+C.use_colab_loss = False
 
 ## Loss layer
 C.use_loss_layer = False
@@ -128,7 +128,7 @@ C.motion_gcn_out.gcn_out = False
 C.motion_ree = edict()
 C.motion_ree.input_dim = 3
 C.motion_ree.ree_cond = False
-C.motion_ree.ree_concatenation = True
+C.motion_ree.ree_concatenation = False
 C.motion_ree.gcn_concatenation = False
 C.motion_ree.gcn_do = 0
 C.motion_ree.gcn_num_stage = 0
@@ -143,12 +143,12 @@ C.motion_int.input_dim = 1
 C.motion_int.num_emb = 2 # set to 2 if binary intention
 C.motion_int.output_dim = 27 # to match model dim
 C.motion_int.binary = True
-C.eval_condition_with_classifier_int = True # evaluates model with intention predicted by int_classifier, if False real target intention will be used to condition prediction.
+C.eval_condition_with_classifier_int = False # evaluates model with intention predicted by int_classifier, if False real target intention will be used to condition prediction.
 
 # Intention classifier
 C.use_int_class = False
 C.classifier = edict()
-C.classifier.flatten = True
+C.classifier.flatten = False
 C.only_classification = False
 
 """Train Config"""

@@ -32,6 +32,8 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
     """
     Do the prediction of the data and compute mean loss per joint for each time frame
     """
+    under_40 = []
+    under_35 = []
     under_30 = []
     under_20 = []
     under_15 = []
@@ -99,6 +101,8 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
         under_15.append(metrics[1])
         under_20.append(metrics[2])
         under_30.append(metrics[3])
+        under_35.append(metrics[4])
+        under_40.append(metrics[5])
 
         # accumulate loss for each batch of data
         m_p3d_handover += mpjpe_p3d_handover.cpu().numpy()
@@ -136,9 +140,11 @@ def regress_pred(model, pbar, num_samples, m_p3d_handover, right_hand_loss):
     u10 = np.array(under_10).mean() * 100
     u15 = np.array(under_15).mean() * 100
     u20 = np.array(under_20).mean() * 100
-    u30 = np.array(under_30).mean()*100
+    u30 = np.array(under_30).mean() * 100
+    u35 = np.array(under_35).mean() * 100
+    u40 = np.array(under_40).mean() * 100
     right_hand_loss = right_hand_loss / num_samples
-    return m_p3d_handover, right_hand_loss, u10, u15, u20, u30, accuracy, f1, f1_binary
+    return m_p3d_handover, right_hand_loss, u10, u15, u20, u30, u35, u40,accuracy, f1, f1_binary
 
 def test(config, model, dataloader) :
 
@@ -148,13 +154,13 @@ def test(config, model, dataloader) :
     num_samples = 0
 
     pbar = dataloader
-    m_p3d_handover, right_hand_loss, under_10, under_15, under_20, under_30, accuracy, f1, f1_binary  = regress_pred(model, pbar, num_samples, m_p3d_handover,right_hand_loss)
+    m_p3d_handover, right_hand_loss, under_10, under_15, under_20, under_30, under_35, under_40, accuracy, f1, f1_binary  = regress_pred(model, pbar, num_samples, m_p3d_handover,right_hand_loss)
 
     # This returns a dictionary with the correspondant loss to each time frame in results time frames
     ret = {}
     for j in range(config.motion.handover_target_length):
         ret["#{:d}".format(titles[j])] = [m_p3d_handover[j], m_p3d_handover[j]]
-    return [round(ret[key][0], 2) for key in results_keys], right_hand_loss, under_10, under_15, under_20, under_30, accuracy, f1, f1_binary
+    return [round(ret[key][0], 2) for key in results_keys], right_hand_loss, under_10, under_15, under_20, under_30, under_35, under_40, accuracy, f1, f1_binary
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
