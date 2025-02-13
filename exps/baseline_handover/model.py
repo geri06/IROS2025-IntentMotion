@@ -5,6 +5,7 @@ from torch import nn
 from mlp import build_mlps
 from einops.layers.torch import Rearrange
 from GCN import GCN
+import csv
 
 class siMLPe(nn.Module):
     def __init__(self, config):
@@ -95,6 +96,11 @@ class siMLPe(nn.Module):
         nn.init.constant_(self.motion_fc_out.bias, 0)
 
     def forward(self, motion_input, ree_input, int_input):
+        start_event = torch.cuda.Event(enable_timing=True)
+        end_event = torch.cuda.Event(enable_timing=True)
+
+        start_event.record()
+
         # process motion input without context with Linear after dct transform
         if self.temporal_fc_in:
             # transpose d and n dims to actuate on temporal dim
@@ -159,6 +165,20 @@ class siMLPe(nn.Module):
         else:
             int_class_logits = torch.empty(0)
             int_predictions = torch.empty(0)
+
+        end_event.record()
+
+        # Wait for everything to finish
+        torch.cuda.synchronize()
+
+        elapsed_time = start_event.elapsed_time(end_event)  # Time in milliseconds
+        print("Elapsed Time:", elapsed_time)
+
+        csv_file = "times.csv"
+
+        with open(csv_file, "a", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow([elapsed_time])
 
         return motion_feats, int_class_logits, int_predictions
 
