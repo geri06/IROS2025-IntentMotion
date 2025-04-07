@@ -115,26 +115,17 @@ The model provides:
 
 ---
 
-## Notes
-
-Feel free to add the following sections as needed:
-- **Installation** instructions  
-- **Citation** for academic use  
-- **License** and contributing guidelines  
-
----
-
 ## Pycharm script parameters
-# Train
+### Train
 ```bash
 --seed 888 --exp-name baseline.txt --layer-norm-axis spatial --with-normalization --num 48
 ```
-# Test
+### Test
 ```bash
 --model-pth exps/baseline_handover/log/snapshot/best_model.pth
 ```
 
-# Train LOO
+### Train LOO
 ```bash
 --seed 888 --exp-name baseline.txt --layer-norm-axis spatial --with-normalization --num 48
 ```
