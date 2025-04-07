@@ -99,10 +99,7 @@ The **siMLPe** model features:
 
 ## Requirements
 
-- Python 3.x  
-- PyTorch  
-- NumPy  
-- Other dependencies as specified in the config files
+[`requirements.txt`](requirements.txt)
 
 ---
 
