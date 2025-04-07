@@ -1,6 +1,6 @@
 Here's your revised `README.md` in proper Markdown format, optimized for GitHub rendering:
 
-# Handover Motion Prediction with siMLPe
+# Handover Motion Prediction with IntentMotion
 
 This repository contains code for predicting human motion during handover interactions using the **siMLPe** (Simple MLP-based) model. The system predicts future human poses based on past motion and intention information.
 
@@ -8,6 +8,7 @@ This repository contains code for predicting human motion during handover intera
 
 ## 📁 Project Structure
 
+```
 .
 ├── data/
 │   ├── handover_test.txt       # Test subject IDs
@@ -17,7 +18,7 @@ This repository contains code for predicting human motion during handover intera
         ├── config.py           # Main configuration file
         ├── test.py             # Testing script
         └── train.py            # Training script
-
+```
 ---
 
 ## 📊 Dataset
@@ -122,6 +123,26 @@ Feel free to add the following sections as needed:
 - **License** and contributing guidelines  
 
 ---
+
+## Pycharm script parameters
+# Train
+```bash
+--seed 888 --exp-name baseline.txt --layer-norm-axis spatial --with-normalization --num 48
+```
+# Test
+```bash
+--model-pth exps/baseline_handover/log/snapshot/best_model.pth
+```
+
+# Train LOO
+```bash
+--seed 888 --exp-name baseline.txt --layer-norm-axis spatial --with-normalization --num 48
+```
+
+
+
+
+
 
 
 ```
