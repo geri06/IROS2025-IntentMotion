@@ -1,6 +1,5 @@
 Here's your revised `README.md` in proper Markdown format, optimized for GitHub rendering:
 
-```markdown
 # Handover Motion Prediction with siMLPe
 
 This repository contains code for predicting human motion during handover interactions using the **siMLPe** (Simple MLP-based) model. The system predicts future human poses based on past motion and intention information.
