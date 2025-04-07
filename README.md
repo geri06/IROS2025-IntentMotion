@@ -41,6 +41,8 @@ The main configuration file [`config.py`](exps/baseline_handover/config.py) incl
 
 Most model settings can be overridden via command-line arguments when running the training script.
 
+If use_int_class option is set to True, the [`config_classifier.py`](exps/baseline_handover/config_classifier.py) will be used. 
+
 ---
 
 ## Training

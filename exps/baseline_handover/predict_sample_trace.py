@@ -14,6 +14,9 @@ from lib.datasets.handover_eval import HandoverEvalDataset
 from model import siMLPe as Model
 from lib.utils.handover_functions import find_intentions_mode, get_dct_matrix
 
+"""
+Code that creates and save figures for the movement prediction with the trace of the movement
+"""
 """Code adapted from STSGCN Repo: https://github.com/FraLuca/STSGCN/blob/main/utils/h36_3d_viz.py"""
 
 def create_pose(ax, plots, vals, pred=True):
