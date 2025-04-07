@@ -96,6 +96,7 @@ class siMLPe(nn.Module):
         nn.init.constant_(self.motion_fc_out.bias, 0)
 
     def forward(self, motion_input, ree_input, int_input):
+
         start_event = torch.cuda.Event(enable_timing=True)
         end_event = torch.cuda.Event(enable_timing=True)
 
@@ -160,25 +161,27 @@ class siMLPe(nn.Module):
             if self.flatten:
                 int_class_logits = self.int_classifier(torch.flatten(motion_feats[:,:self.pred_dim,:],start_dim=1))  # Flatten dims 1 and 2 considering the 10 first predited frames
             else:
+
                 int_class_logits = self.int_classifier(motion_feats[:,:self.pred_dim,:].mean(dim=1))  # Pooling along temporal dimension
-            int_predictions = torch.argmax(int_class_logits, dim=1)  # Convert logits to class indices
+            int_predictions = torch.argmax(int_class_logits, dim=1)
+            end_event.record()
+
+            # Wait for everything to finish
+            torch.cuda.synchronize()
+
+            elapsed_time = start_event.elapsed_time(end_event)  # Time in milliseconds
+            print("Elapsed Time:", elapsed_time)
+
+            csv_file = "times.csv"
+
+            with open(csv_file, "a", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow([elapsed_time])
         else:
             int_class_logits = torch.empty(0)
             int_predictions = torch.empty(0)
-
-        end_event.record()
-
-        # Wait for everything to finish
-        torch.cuda.synchronize()
-
-        elapsed_time = start_event.elapsed_time(end_event)  # Time in milliseconds
-        print("Elapsed Time:", elapsed_time)
-
-        csv_file = "times.csv"
-
-        with open(csv_file, "a", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow([elapsed_time])
+            end_event.record()
+            torch.cuda.synchronize()
 
         return motion_feats, int_class_logits, int_predictions
 

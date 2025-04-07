@@ -322,43 +322,44 @@ def update(num, data_gt, data_pred, ree_data ,plots_gt, plots_pred,ree_plot,fig,
 
     ### ----- Create visualization of data and prediction ----
 if __name__ == '__main__':
-    # Classifier Load
-    int_classifier_path = "/home/gerard/Documents/IRI/Repos/siMLPe/checkpoints/int_classifier_v1.pth"
-    int_classifier = Model(config_classifier)
-    config_classifier.motion.handover_target_length = config_classifier.motion.handover_target_length_eval
-    state_dict_classifier = torch.load(int_classifier_path)
-    int_classifier.load_state_dict(state_dict_classifier, strict=True)
-    int_classifier.eval()
-    int_classifier.cuda()
+    for _ in range(100):
+        # Classifier Load
+        int_classifier_path = "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/snapshot/classifier_best.pth"
+        int_classifier = Model(config_classifier)
+        config_classifier.motion.handover_target_length = config_classifier.motion.handover_target_length_eval
+        state_dict_classifier = torch.load(int_classifier_path)
+        int_classifier.load_state_dict(state_dict_classifier, strict=True)
+        int_classifier.eval()
+        int_classifier.cuda()
 
-    # Keypoints Predictor Load
-    keypoints_predictor_path = "/home/gerard/Documents/IRI/Repos/siMLPe/checkpoints/keypoints_predictor_v1.pth"
-    keypoints_predictor = Model(config)
-    config.motion.handover_target_length = config.motion.handover_target_length_eval
-    state_dict_keypoints_predictor = torch.load(keypoints_predictor_path)
-    keypoints_predictor.load_state_dict(state_dict_keypoints_predictor, strict=True)
-    keypoints_predictor.eval()
-    keypoints_predictor.cuda()
+        # Keypoints Predictor Load
+        keypoints_predictor_path = "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/snapshot/colab_best_model.pth"
+        keypoints_predictor = Model(config)
+        config.motion.handover_target_length = config.motion.handover_target_length_eval
+        state_dict_keypoints_predictor = torch.load(keypoints_predictor_path)
+        keypoints_predictor.load_state_dict(state_dict_keypoints_predictor, strict=True)
+        keypoints_predictor.eval()
+        keypoints_predictor.cuda()
 
-    sample_path = "/home/gerard/Documents/IRI/Repos/siMLPe/data/handover/S7/multiple_obstacles/left_inner_natural.txt"
-    # define input data
-    input_motion_data, input_ree_data, input_int_data, gt_motion_data, gt_ree_data, gt_int_data = get_data(sample_path)
-    forced_intention = None
+        sample_path = "/home/gerard/Documents/IRI/Repos/siMLPe/data/handover/S7/multiple_obstacles/left_inner_natural.txt"
+        # define input data
+        input_motion_data, input_ree_data, input_int_data, gt_motion_data, gt_ree_data, gt_int_data = get_data(sample_path)
+        forced_intention = None
 
-    # do the prediction
-    data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36 = predict(keypoints_predictor, int_classifier, input_motion_data, gt_motion_data, input_ree_data, gt_ree_data, gt_int_data, forced_intention)
+        # do the prediction
+        data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36 = predict(keypoints_predictor, int_classifier, input_motion_data, gt_motion_data, input_ree_data, gt_ree_data, gt_int_data, forced_intention)
 
-    # Define name of the gif
-    path_parts = sample_path.split("/S7/")
-    remaining_path = path_parts[1]
-    subject_info = "_".join(remaining_path.split("/")[:2]).rsplit(".", 1)[0] + f"_{int(intention_data[0]), int(intention_data[1]), int(intention_data[2])}"
+        # Define name of the gif
+        path_parts = sample_path.split("/S7/")
+        remaining_path = path_parts[1]
+        subject_info = "_".join(remaining_path.split("/")[:2]).rsplit(".", 1)[0] + f"_{int(intention_data[0]), int(intention_data[1]), int(intention_data[2])}"
 
-    # call visualization function
-    viz_prediction(data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36, subject_info)
+        # call visualization function
+        #viz_prediction(data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36, subject_info)
 
-    total_params_class = sum(p.numel() for p in int_classifier.parameters())
-    total_params_keyp = sum(p.numel() for p in keypoints_predictor.parameters())
-    print("Total number of parameters: {}".format(total_params_class+ total_params_keyp))
+        total_params_class = sum(p.numel() for p in int_classifier.parameters())
+        total_params_keyp = sum(p.numel() for p in keypoints_predictor.parameters())
+        print("Total number of parameters: {}".format(total_params_class+ total_params_keyp))
 
 
 

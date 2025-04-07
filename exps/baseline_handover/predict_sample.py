@@ -255,24 +255,24 @@ def viz_prediction(data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36, 
     gt_plots = create_pose(ax, gt_plots, vals, pred=False, update=False)
     pred_plots = create_pose(ax, pred_plots, vals, pred=True, update=False)
     ree_plot = create_ree(ax, ree_plots, ree_vals)
-
+    ax.axis('off')
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z")
     ax.legend(loc='lower left')
 
-    ax.set_xlim3d([-1, 1.5])
-    ax.set_xlabel('X')
+    # ax.set_xlim3d([-1, 1.5])
+    # ax.set_xlabel('X')
+    #
+    # ax.set_ylim3d([-1, 1.5])
+    # ax.set_ylabel('Y')
+    #
+    # ax.set_zlim3d([0.0, 1.5])
+    # ax.set_zlabel('Z')
 
-    ax.set_ylim3d([-1, 1.5])
-    ax.set_ylabel('Y')
-
-    ax.set_zlim3d([0.0, 1.5])
-    ax.set_zlabel('Z')
-
-    ax.set_title('mean loss in mm is: ' + str(round(torch.mean(mpjpe_p3d_h36).item(), 3)) + ' with intention : ' + str(
-        intention_data) + ' for ' + str(
-        25) + ' frames')
+    # ax.set_title('mean loss in mm is: ' + str(round(torch.mean(mpjpe_p3d_h36).item(), 3)) + ' with intention : ' + str(
+    #    intention_data) + ' for ' + str(
+    #    25) + ' frames')
 
     line_anim = animation.FuncAnimation(fig, update, 25,
                                         fargs=(data_gt, data_pred, ree_data, gt_plots, pred_plots, ree_plot,
@@ -317,7 +317,7 @@ def update(num, data_gt, data_pred, ree_data ,plots_gt, plots_pred,ree_plot,fig,
     ### ----- Create visualization of data and prediction ----
 if __name__ == '__main__':
     # model_path = "/home/gerard/Documents/IRI/Repos/siMLPe/checkpoints/keypoints_predictor_v1.pth"
-    model_path = "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/snapshot/5000-simple-complet.pth"
+    model_path = "/home/gerard/Documents/IRI/Repos/siMLPe/exps/baseline_handover/log/snapshot/colab_best_model.pth"
     model = Model(config)
     config.motion.handover_target_length = config.motion.handover_target_length_eval
     state_dict = torch.load(model_path)
@@ -328,7 +328,7 @@ if __name__ == '__main__':
     sample_path = "/home/gerard/Documents/IRI/Repos/siMLPe/data/handover/S7/multiple_obstacles/left_inner_natural.txt"
     # define input data
     input_motion_data, input_ree_data, input_int_data, gt_motion_data, gt_ree_data, gt_int_data = get_data(sample_path)
-    forced_intention = 0
+    forced_intention = 1
 
     # do the prediction
     data_pred, data_gt, ree_data, intention_data, mpjpe_p3d_h36 = predict(model, input_motion_data, gt_motion_data, input_ree_data, gt_ree_data, gt_int_data, forced_intention)
