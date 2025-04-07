@@ -21,7 +21,7 @@ This repository contains code for predicting human motion during handover intera
 ```
 ---
 
-## 📊 Dataset
+## Dataset
 
 The dataset consists of motion capture data from handover interactions.
 
@@ -30,7 +30,7 @@ The dataset consists of motion capture data from handover interactions.
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 The main configuration file [`config.py`](exps/baseline_handover/config.py) includes settings for:
 
@@ -43,7 +43,7 @@ Most model settings can be overridden via command-line arguments when running th
 
 ---
 
-## 🏋️‍♀️ Training
+## Training
 
 To train the model, run:
 
@@ -67,7 +67,7 @@ Training features include:
 
 ---
 
-## ✅ Evaluation
+## Evaluation
 
 To evaluate a trained model:
 
@@ -83,7 +83,7 @@ python test.py --model-pth [path_to_model_weights]
 
 ---
 
-## 🧠 Model Architecture
+## Model Architecture
 
 The **siMLPe** model features:
 
@@ -95,7 +95,7 @@ The **siMLPe** model features:
 
 ---
 
-## 📦 Requirements
+## Requirements
 
 - Python 3.x  
 - PyTorch  
@@ -104,7 +104,7 @@ The **siMLPe** model features:
 
 ---
 
-## 📈 Results
+## Results
 
 The model provides:
 
@@ -115,7 +115,7 @@ The model provides:
 
 ---
 
-## 📝 Notes
+## Notes
 
 Feel free to add the following sections as needed:
 - **Installation** instructions  
