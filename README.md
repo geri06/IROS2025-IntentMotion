@@ -9,7 +9,6 @@ This repository contains code for predicting human motion during handover intera
 
 ## 📁 Project Structure
 
-```plaintext
 .
 ├── data/
 │   ├── handover_test.txt       # Test subject IDs
@@ -19,7 +18,6 @@ This repository contains code for predicting human motion during handover intera
         ├── config.py           # Main configuration file
         ├── test.py             # Testing script
         └── train.py            # Training script
-```
 
 ---
 
