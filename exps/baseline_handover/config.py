@@ -51,6 +51,7 @@ C.motion = edict()
 C.motion.handover_input_length = 50
 C.motion.handover_input_length_dct = 50
 C.motion.handover_target_length_train = 10
+C.motion.handover_target_length = 10
 C.motion.handover_target_length_eval = 25
 C.motion.dim = 27
 
@@ -62,13 +63,13 @@ C.deriv_output = True
 C.use_relative_loss = True
 
 # RH losses
-C.use_relative_loss_rh = False
-C.use_rh_loss = False
+C.use_relative_loss_rh = True
+C.use_rh_loss = True
 
 # Special loss
-C.use_ree_loss = False
-C.use_rh_distance_joints_loss = False
-C.use_colab_loss = False
+C.use_ree_loss = True
+C.use_rh_distance_joints_loss = True
+C.use_colab_loss = True
 
 ## Loss layer
 C.use_loss_layer = False
@@ -148,7 +149,7 @@ C.eval_condition_with_classifier_int = False # evaluates model with intention pr
 # Intention classifier
 C.use_int_class = False
 C.classifier = edict()
-C.classifier.flatten = False
+C.classifier.flatten = True
 C.only_classification = False
 
 """Train Config"""
