@@ -368,10 +368,8 @@ while (nb_iter + 1) < config.total_iters:
             print("Body loss values", acc_tmp)
             print("RH loss values", rh_loss)
             acc_log.write(''.join(str(nb_iter + 1) + '\n'))
-            line = ''
-            for ii in acc_tmp:
-                line += str(ii) + ' '
-            line += '\n'
+            # Just convert the single float to a string directly
+            line = str(acc_tmp) + '\n'
             acc_log.write(''.join(line))
             # keep training the model
             model.train()
