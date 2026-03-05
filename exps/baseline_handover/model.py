@@ -172,13 +172,13 @@ class siMLPe(nn.Module):
         torch.cuda.synchronize()
 
         elapsed_time = start_event.elapsed_time(end_event)  # Time in milliseconds
-        print("Elapsed Time:", elapsed_time)
+        # print("Elapsed Time:", elapsed_time)
 
         csv_file = "times.csv"
 
-        with open(csv_file, "a", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow([elapsed_time])
+        # with open(csv_file, "a", newline="") as file:
+        #    writer = csv.writer(file)
+        #    writer.writerow([elapsed_time])
 
         return motion_feats, int_class_logits, int_predictions
 
