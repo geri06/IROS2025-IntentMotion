@@ -147,7 +147,7 @@ C.motion_int.binary = True
 C.eval_condition_with_classifier_int = False # evaluates model with intention predicted by int_classifier, if False real target intention will be used to condition prediction.
 
 # Intention classifier
-C.use_int_class = False
+C.use_int_class = False # Will use config_classifier.py in case this is set to true
 C.classifier = edict()
 C.classifier.flatten = True
 C.only_classification = False
@@ -168,7 +168,7 @@ C.model_pth = None
 """Eval Config"""
 C.shift_step = 1
 C.eval_every = 250
-C.actions_to_load = "all" # add actions between brackets: ["walking", "smoking"]
+C.actions_to_load = "all" # not used
 
 """Display Config"""
 C.print_every = 250

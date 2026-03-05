@@ -14,6 +14,9 @@ from config  import config
 from lib.datasets.handover_eval import HandoverEvalDataset
 from model import siMLPe as Model
 
+"""
+Code that creates visualization of the samples in a folder with data
+"""
 """Code adapted from STSGCN Repo: https://github.com/FraLuca/STSGCN/blob/main/utils/h36_3d_viz.py"""
 
 def create_pose(ax, plots, vals, update=False):
