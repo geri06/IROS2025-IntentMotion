@@ -160,7 +160,7 @@ def test(config, model, dataloader) :
     ret = {}
     for j in range(config.motion.handover_target_length):
         ret["#{:d}".format(titles[j])] = [m_p3d_handover[j], m_p3d_handover[j]]
-    return [round(ret[key][0], 2) for key in results_keys], right_hand_loss, under_10, under_15, under_20, under_30, under_35, under_40, accuracy, f1, f1_binary
+    return np.mean([round(ret[key][0], 2) for key in results_keys]), np.mean(right_hand_loss), under_10, under_15, under_20, under_30, under_35, under_40, accuracy, f1, f1_binary
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
