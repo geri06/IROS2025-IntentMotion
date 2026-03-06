@@ -161,6 +161,13 @@ If you find this code or our paper useful in your research, please consider citi
   year={2025}
 }
 
+@inproceedings{guo2023back,
+  title={Back to MLP: A Simple Baseline for Human Motion Prediction},
+  author={Guo, Wen and Du, Yuming and Shen, Xi and Lepetit, Vincent and Alameda-Pineda, Xavier and Moreno-Noguer, Francesc},
+  booktitle={Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)},
+  pages={4809--4819},
+  year={2023}
+}
 ```
 
 ---
