@@ -41,6 +41,7 @@ parser.add_argument('--weight', type=float, default=1., help='=loss weight')
 args = parser.parse_args()
 
 # Ensure reproducibility of experiments
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 torch.use_deterministic_algorithms(True)
 torch.manual_seed(args.seed)
 
@@ -208,7 +209,7 @@ def train_step(handover_motion_input, handover_motion_target, ree_motion_input, 
             motion_gt_collab = motion_gt[collaboration_samples,:,:,:]
             #print("MOTION GT COLAB SHAPE", motion_gt_collab.shape)
             pred_dist = gen_rh_distance_to_joints(motion_pred_collab)
-            print(pred_dist.shape)
+            # print(pred_dist.shape)
             gt_dist = gen_rh_distance_to_joints(motion_gt_collab)
             #print("PRED AND GT DIST", pred_dist.shape, gt_dist.shape)
             distance_joints_loss = torch.mean(abs(gt_dist-pred_dist),dim= [0,1,2])

@@ -1,8 +1,22 @@
+# Data
 /data/h36m
 /data/amass
 /data/3dpw
 /data/handover
 
+# Experiments & Logs
 /exps/baseline_h36m/log
+/exps/baseline_handover/log/
+/visualizations
+/runs
+baseline.txt
+times.csv
 
+# Training & Checkpoints
 /checkpoints
+
+# Python
+**/__pycache__/
+
+# IDEs
+/.idea

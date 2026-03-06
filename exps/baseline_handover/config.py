@@ -40,6 +40,7 @@ def add_path(path):
         sys.path.insert(0, path)
 
 add_path(osp.join(C.root_dir, 'lib'))
+add_path(C.root_dir)
 
 """Data Dir and Weight Dir"""
 # TODO

@@ -36,6 +36,7 @@ parser.add_argument('--weight', type=float, default=1., help='=loss weight')
 args = parser.parse_args()
 
 # Ensure reproducibility of experiments
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 torch.use_deterministic_algorithms(True)
 torch.manual_seed(args.seed)
 

@@ -1,138 +1,166 @@
-Here's your revised `README.md` in proper Markdown format, optimized for GitHub rendering:
 
-# Handover Motion Prediction with IntentMotion
 
-This repository contains code for predicting human motion during handover interactions using the **siMLPe** (Simple MLP-based) model. The system predicts future human poses based on past motion and intention information.
+---
+# 🤖 IntentMotion: Enhancing Context-Aware Human Motion Prediction for Efficient Robot Handovers
+
+<div align="center">
+
+*Accurate human motion prediction (HMP) is critical for seamless human-robot collaboration, particularly in handover tasks that require real-time adaptability.* 
+
+**[Paper](https://arxiv.org/pdf/2503.00576)** | **[Video Presentation](https://youtu.be/BHQKijZAPQ4)** 
+
+</div>
 
 ---
 
-## 📁 Project Structure
+## 🎥 Presentation & Demos
 
-```
+### Video Presentation
+
+*(Click the image below to watch the IROS 2025 presentation video)*
+
+<div align="center">
+<a href="https://youtu.be/BHQKijZAPQ4">
+  <img src="assets/iros_presentation.png" alt="IROS 2025 Presentation" width="500">
+</a>
+</div>
+
+### Motion Prediction Animations
+
+*IntentMotion dynamically adjusts its predictions based on the inferred human intention (collaborative vs. non-collaborative).* 
+
+<div>
+<img src="assets/IROS25_Presentation.gif" alt="IntentMotion Handover Prediction Demo" width="700">
+<p><em>While the baseline siMLPe model frequently degenerates into static right-hand predictions during object transfer, our intention-aware framework explicitly infers human collaborative intent. This contextual modulation significantly improves the forecasting fidelity of right-hand kinematics, synthesizing fluid and accurate motions essential for seamless human-robot handovers.</em></p>
+</div>
+
+---
+
+## 📖 About The Project
+
+This repository contains the official implementation of **IntentMotion**, a framework presented at IROS 2025. Our approach enhances human motion forecasting for handover tasks by leveraging a lightweight MLP-based architecture (siMLPe) and introducing key improvements. 
+
+**Key Contributions:**
+
+* **Intention-Awareness:** Incorporates an intention embedding mechanism and a novel intention classifier to refine motion predictions based on human intent. 
+
+
+* **High Efficiency:** Achieves 200x faster inference and requires only 3% of the parameters compared to existing state-of-the-art HMP models. 
+
+
+* **Task-Specific Accuracy:** Reduces body loss error by over 50%. Introduces custom loss terms ($\mathcal{L}_{c}$, $\mathcal{L}_{rer}$, and $\mathcal{L}_{vr}$) to specifically enhance the modeling of right-hand dynamics during handovers. 
+
+
+
+### Objective Function
+
+To ensure highly accurate right-hand positioning, IntentMotion optimizes the following multi-term objective function:
+
+$$\mathcal{L}_{h}=\mathcal{L}_{re}+\mathcal{L}_{v}+\mathcal{L}_{c}+\mathcal{L}_{rer}+\mathcal{L}_{vr}$$
+
+---
+
+## 📊 Key Results
+
+IntentMotion provides a highly efficient and scalable solution for real-time human-robot interaction. 
+
+### Computational Efficiency
+
+Compared to previous state-of-the-art methods, IntentMotion drastically reduces computational overhead:
+
+| Model | Mean Inference Time (ms) | # Parameters |
+| --- | --- |--------------|
+| Laplaza et al. [5] + int. | 3,680.6 | 6,113,782    |
+| **IntentMotion (Ours)** | **18.5** | **126,558**  |
+| **IntentMotion Classifier** | **18.7** | **265,032**  |
+
+### Prediction Accuracy
+
+Additional to the qualitative improvement of predictions, our final model ($FT+Int+\mathcal{L}_{c}+\mathcal{L}_{vr}+\mathcal{L}_{rer}$) achieves superior joint positioning accuracy, especially for the critical right hand involved in the handover:
+
+| Metric | Body $L_{2}$ (m) | $\le0.20m$ (%) | $\le0.30m$ (%) | Right Hand $L_{2}$ (m) |
+| --- | --- | --- | --- | --- |
+| siMLPe Baseline [1] | 0.177 | 64.53 | 93.48 | 0.217 |
+| **IntentMotion (Ours)** | **0.165** | **70.66** | **98.36** | **0.195** |
+
+---
+
+## ⚙️ Repository Structure
+
+```text
 .
 ├── data/
-│   ├── handover_test.txt       # Test subject IDs
-│   └── handover_train.txt      # Training subject IDs
-└── exps/
-    └── baseline_handover/
-        ├── config.py           # Main configuration file
-        ├── test.py             # Testing script
-        └── train.py            # Training script
+│   ├── handover_test.txt       # Test subject IDs (S7)
+│   └── handover_train.txt      # Training subject IDs (S3, S4, S5, S6, S8, S9, S10)
+├── exps/
+│   └── baseline_handover/
+│       ├── config.py           # Main configuration file
+│       ├── config_classifier.py # Configuration for the intention classifier
+│       ├── test.py             # Testing and evaluation script
+│       └── train.py            # Model training script
+└── requirements.txt            # Python dependencies
+
 ```
----
-
-## Dataset
-
-The dataset consists of motion capture data from handover interactions.
-
-- **Training Subjects**: `S3`, `S4`, `S5`, `S6`, `S8`, `S9`, `S10`  
-- **Test Subject**: `S7`
 
 ---
 
-## Configuration
+## 🚀 Getting Started
 
-The main configuration file [`config.py`](exps/baseline_handover/config.py) includes settings for:
+### 1. Installation
 
-- Model architecture (MLP layers, normalization, etc.)
-- Training parameters (batch size, learning rate, etc.)
-- Loss functions (MPJPE, velocity loss, intention classification, etc.)
-- Data preprocessing (DCT transformations, etc.)
-
-Most model settings can be overridden via command-line arguments when running the training script.
-
-If use_int_class option is set to True, the [`config_classifier.py`](exps/baseline_handover/config_classifier.py) will be used. 
-
----
-
-## Training
-
-To train the model, run:
+Clone the repository and install the required dependencies:
 
 ```bash
-python train.py --exp-name [experiment_name] --seed [random_seed] [other_options]
+git clone https://github.com/geri06/IROS2025-IntentMotion.git
+cd IntentMotion
+pip install -r requirements.txt
+
 ```
 
-### Available Options:
-- `--temporal-only`: Use temporal-only layers  
-- `--layer-norm-axis`: Set layer normalization axis  
-- `--with-normalization`: Enable layer normalization  
-- `--spatial-fc`: Use only spatial fully-connected layers  
-- `--num`: Number of MLP blocks  
-- `--weight`: Loss weight  
+### 2. Configuration
 
-Training features include:
-- Cosine learning rate scheduling  
-- Multiple loss functions (position, velocity, intention classification)  
-- Periodic evaluation on test set  
-- Model checkpointing
+The core settings are managed in `exps/baseline_handover/config.py`. If you wish to enable the intention classifier, the framework will automatically utilize `exps/baseline_handover/config_classifier.py`.
 
----
+### 3. Training the Model
 
-## Evaluation
-
-To evaluate a trained model:
+To train IntentMotion with the configuration parameters, run:
 
 ```bash
-python test.py --model-pth [path_to_model_weights]
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python exps/baseline_handover/train_eval_lead_one_out.py \
+  --exp-name baseline.txt \
+  --seed 888 \
+  --layer-norm-axis spatial \
+  --with-normalization \
+  --num 48
+
 ```
 
-### Metrics Computed:
-- MPJPE (Mean Per Joint Position Error) – full body  
-- Right-hand-specific MPJPE  
-- Percentage of predictions under various error thresholds (10cm, 15cm, etc.)  
-- Intention classification accuracy and F1 score (if enabled)
+*(Note: The `CUBLAS_WORKSPACE_CONFIG=:4096:8` prefix ensures reproducible, deterministic results when using CUDA >= 10.2).*
 
----
+### 4. Evaluation and Testing
 
-## Model Architecture
+To evaluate a trained model checkpoint and generate metrics (MPJPE, right-hand-specific errors, and intention classification F1-score), run:
 
-The **siMLPe** model features:
-
-- MLP-based architecture with configurable depth  
-- Optional DCT transformations for input/output  
-- Configurable normalization layers  
-- Multi-task learning (motion prediction + intention classification)  
-- Multi-term loss for enhanced prediction quality
-
----
-
-## Requirements
-
-[`requirements.txt`](requirements.txt)
-
----
-
-## Results
-
-The model provides:
-
-- Per-frame position errors  
-- Right-hand-specific errors  
-- Quality metrics (e.g., % under 10cm, 15cm thresholds)  
-- Intention classification metrics (accuracy, F1 score, if applicable)
-
----
-
-## Pycharm script parameters
-### Train
 ```bash
---seed 888 --exp-name baseline.txt --layer-norm-axis spatial --with-normalization --num 48
-```
-### Test
-```bash
---model-pth exps/baseline_handover/log/snapshot/best_model.pth
-```
-
-### Train LOO
-```bash
---seed 888 --exp-name baseline.txt --layer-norm-axis spatial --with-normalization --num 48
-```
-
-
-
-
-
-
+python exps/baseline_handover/test.py \
+  --model-pth exps/baseline_handover/log/snapshot/best_model.pth
 
 ```
+
+---
+
+## 📝 Citation
+
+If you find this code or our paper useful in your research, please consider citing:
+
+```bibtex
+@inproceedings{gomezizquierdo2025intentmotion,
+  title={Enhancing Context-Aware Human Motion Prediction for Efficient Robot Handovers},
+  author={G{\'o}mez-Izquierdo, Gerard and Laplaza, Javier and Sanfeliu, Alberto and Garrell, Ana{\'\i}s},
+  booktitle={IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+  year={2025}
+}
+
+```
+
+---

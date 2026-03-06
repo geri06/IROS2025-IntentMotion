@@ -172,7 +172,7 @@ class siMLPe(nn.Module):
         torch.cuda.synchronize()
 
         elapsed_time = start_event.elapsed_time(end_event)  # Time in milliseconds
-        print("Elapsed Time:", elapsed_time)
+        # print("Elapsed Time:", elapsed_time)
 
         csv_file = "times.csv"
 
