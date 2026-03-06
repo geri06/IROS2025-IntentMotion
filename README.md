@@ -119,7 +119,7 @@ pip install -r requirements.txt
 
 ### 2. Configuration
 
-The core settings are managed in `exps/baseline_handover/config.py`. If you wish to enable the intention classifier, the framework will automatically utilize `exps/baseline_handover/config_classifier.py`.
+The core settings are managed in `exps/baseline_handover/config.py`.
 
 ### 3. Training the Model
 
